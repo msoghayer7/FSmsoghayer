@@ -1,0 +1,154 @@
+export type UserRole = 'ADMIN' | 'FINANCE_MANAGER' | 'ACCOUNTANT' | 'PROCUREMENT' | 'VIEWER';
+
+export interface AuthUser {
+  id: string;
+  fullName: string;
+  email: string;
+  role: UserRole;
+}
+
+export type AccountType = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';
+
+export interface Account {
+  id: string;
+  code: string;
+  name: string;
+  type: AccountType;
+  isActive: boolean;
+}
+
+export interface JournalEntryLine {
+  id: string;
+  account: Account;
+  debit: number;
+  credit: number;
+  description?: string;
+}
+
+export interface JournalEntry {
+  id: string;
+  entryNumber: string;
+  entryDate: string;
+  description: string;
+  status: 'DRAFT' | 'POSTED';
+  lines: JournalEntryLine[];
+}
+
+export interface Department {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export type PartnerType = 'VENDOR' | 'CUSTOMER' | 'BOTH';
+
+export interface BusinessPartner {
+  id: string;
+  code: string;
+  name: string;
+  type: PartnerType;
+  taxNumber?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+}
+
+export type ContractType = 'SERVICE' | 'LEASE' | 'SUPPLY' | 'MAINTENANCE' | 'CONSULTING' | 'OTHER';
+export type ContractStatus = 'DRAFT' | 'ACTIVE' | 'RENEWED' | 'EXPIRED' | 'TERMINATED';
+export type BillingFrequency = 'ONE_TIME' | 'MONTHLY' | 'QUARTERLY' | 'SEMI_ANNUAL' | 'ANNUAL';
+
+export interface Contract {
+  id: string;
+  contractNumber: string;
+  title: string;
+  partner: BusinessPartner;
+  partnerId: string;
+  type: ContractType;
+  startDate: string;
+  endDate: string;
+  totalValue: number;
+  currency: string;
+  billingFrequency: BillingFrequency;
+  paymentTermsDays: number;
+  autoRenew: boolean;
+  status: ContractStatus;
+  departmentId?: string;
+  defaultExpenseAccountId?: string;
+  notes?: string;
+}
+
+export type ExpenseRecognitionMethod = 'IMMEDIATE' | 'STRAIGHT_LINE';
+export type ExpenseStatus = 'DRAFT' | 'APPROVED' | 'POSTED' | 'CANCELLED';
+export type AccrualPeriodStatus = 'PENDING' | 'POSTED' | 'CANCELLED';
+
+export interface ExpenseAccrualSchedule {
+  id: string;
+  periodLabel: string;
+  periodStart: string;
+  periodEnd: string;
+  amount: number;
+  status: AccrualPeriodStatus;
+  journalEntryId?: string;
+}
+
+export interface Expense {
+  id: string;
+  expenseNumber: string;
+  contractId?: string;
+  partner: BusinessPartner;
+  partnerId: string;
+  description: string;
+  category?: string;
+  totalAmount: number;
+  currency: string;
+  invoiceNumber?: string;
+  invoiceDate: string;
+  accrualStartDate: string;
+  accrualEndDate: string;
+  recognitionMethod: ExpenseRecognitionMethod;
+  expenseAccount: Account;
+  status: ExpenseStatus;
+  initialJournalEntryId?: string;
+  schedule: ExpenseAccrualSchedule[];
+}
+
+export type AssetStatus = 'ACTIVE' | 'FULLY_DEPRECIATED' | 'DISPOSED';
+
+export interface AssetCategory {
+  id: string;
+  name: string;
+  defaultUsefulLifeMonths: number;
+  assetAccount: Account;
+  depreciationExpenseAccount: Account;
+  accumulatedDepreciationAccount: Account;
+}
+
+export interface AssetDepreciationSchedule {
+  id: string;
+  periodLabel: string;
+  periodStart: string;
+  periodEnd: string;
+  depreciationAmount: number;
+  accumulatedDepreciation: number;
+  bookValue: number;
+  status: AccrualPeriodStatus;
+  journalEntryId?: string;
+}
+
+export interface FixedAsset {
+  id: string;
+  assetNumber: string;
+  name: string;
+  category: AssetCategory;
+  categoryId: string;
+  acquisitionDate: string;
+  acquisitionCost: number;
+  salvageValue: number;
+  usefulLifeMonths: number;
+  status: AssetStatus;
+  acquisitionJournalEntryId?: string;
+  disposalDate?: string;
+  disposalProceeds?: number;
+  disposalJournalEntryId?: string;
+  schedule: AssetDepreciationSchedule[];
+}

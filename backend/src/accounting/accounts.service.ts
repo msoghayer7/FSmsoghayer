@@ -1,0 +1,29 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Account } from './entities/account.entity';
+
+@Injectable()
+export class AccountsService {
+  constructor(@InjectRepository(Account) private readonly repo: Repository<Account>) {}
+
+  findAll(): Promise<Account[]> {
+    return this.repo.find({ order: { code: 'ASC' } });
+  }
+
+  async findOne(id: string): Promise<Account> {
+    const account = await this.repo.findOneBy({ id });
+    if (!account) {
+      throw new NotFoundException(`Account ${id} not found`);
+    }
+    return account;
+  }
+
+  findByCode(code: string): Promise<Account | null> {
+    return this.repo.findOneBy({ code });
+  }
+
+  create(data: Partial<Account>): Promise<Account> {
+    return this.repo.save(this.repo.create(data));
+  }
+}
