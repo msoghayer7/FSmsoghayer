@@ -5,7 +5,6 @@ export interface JournalLineInput {
   debit?: number;
   credit?: number;
   description?: string;
-  departmentId?: string | null;
 }
 
 export interface CreateJournalEntryInput {

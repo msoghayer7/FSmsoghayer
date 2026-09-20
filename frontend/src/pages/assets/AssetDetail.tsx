@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiClient, apiErrorMessage } from '../../api/client';
 import type { FixedAsset } from '../../api/types';
 import { formatCurrency } from '../../utils/format';
@@ -13,6 +13,7 @@ const ASSET_STATUS_LABELS: Record<string, string> = {
 
 const PERIOD_STATUS_LABELS: Record<string, string> = {
   PENDING: 'بانتظار الترحيل',
+  AWAITING_APPROVAL: 'قيد بانتظار الاعتماد',
   POSTED: 'مرحّل',
   CANCELLED: 'ملغي',
 };
@@ -83,8 +84,13 @@ export default function AssetDetail() {
           <div className="actions-row">
             {!asset.acquisitionJournalEntryId && (
               <button className="btn btn-primary" disabled={busy} onClick={() => runAction(() => apiClient.post(`/assets/${id}/record-acquisition`, {}))}>
-                ترحيل قيد الاقتناء
+                إنشاء قيد الاقتناء (مسودة)
               </button>
+            )}
+            {asset.acquisitionJournalEntryId && (
+              <Link to={`/journal-entries/${asset.acquisitionJournalEntryId}`} className="btn btn-secondary">
+                عرض قيد الاقتناء
+              </Link>
             )}
             <div className="inline-form">
               <input type="date" placeholder="تاريخ الاستبعاد" value={disposalDate} onChange={(e) => setDisposalDate(e.target.value)} />
@@ -99,6 +105,13 @@ export default function AssetDetail() {
                 استبعاد الأصل
               </button>
             </div>
+          </div>
+        )}
+        {asset.disposalJournalEntryId && (
+          <div className="actions-row">
+            <Link to={`/journal-entries/${asset.disposalJournalEntryId}`} className="btn btn-secondary">
+              عرض قيد الاستبعاد
+            </Link>
           </div>
         )}
       </div>
@@ -133,6 +146,11 @@ export default function AssetDetail() {
                     >
                       ترحيل هذه الفترة
                     </button>
+                  )}
+                  {s.status === 'AWAITING_APPROVAL' && s.journalEntryId && (
+                    <Link to={`/journal-entries/${s.journalEntryId}`} className="btn btn-small btn-secondary">
+                      اعتماد القيد
+                    </Link>
                   )}
                 </td>
               </tr>

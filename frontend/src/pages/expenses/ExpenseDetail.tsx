@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiClient, apiErrorMessage } from '../../api/client';
 import type { Expense } from '../../api/types';
 import { formatCurrency } from '../../utils/format';
@@ -7,6 +7,7 @@ import { StatusBadge } from '../../components/StatusBadge';
 
 const PERIOD_STATUS_LABELS: Record<string, string> = {
   PENDING: 'بانتظار الترحيل',
+  AWAITING_APPROVAL: 'قيد بانتظار الاعتماد',
   POSTED: 'مرحّل',
   CANCELLED: 'ملغي',
 };
@@ -82,8 +83,15 @@ export default function ExpenseDetail() {
         {expense.status === 'DRAFT' && (
           <div className="actions-row">
             <button className="btn btn-primary" disabled={busy} onClick={() => runAction(() => apiClient.post(`/expenses/${id}/approve`))}>
-              اعتماد وترحيل القيد الأولي
+              اعتماد المصروف (ينشئ قيدًا مبدئيًا كمسودة)
             </button>
+          </div>
+        )}
+        {expense.initialJournalEntryId && (
+          <div className="actions-row">
+            <Link to={`/journal-entries/${expense.initialJournalEntryId}`} className="btn btn-secondary">
+              عرض القيد المبدئي
+            </Link>
           </div>
         )}
       </div>
@@ -118,6 +126,11 @@ export default function ExpenseDetail() {
                     >
                       ترحيل هذه الفترة
                     </button>
+                  )}
+                  {s.status === 'AWAITING_APPROVAL' && s.journalEntryId && (
+                    <Link to={`/journal-entries/${s.journalEntryId}`} className="btn btn-small btn-secondary">
+                      اعتماد القيد
+                    </Link>
                   )}
                 </td>
               </tr>

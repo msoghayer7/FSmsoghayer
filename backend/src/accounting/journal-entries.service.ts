@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Repository } from 'typeorm';
 import { JournalEntry } from './entities/journal-entry.entity';
 import { JournalEntryLine } from './entities/journal-entry-line.entity';
@@ -7,20 +8,38 @@ import { JournalEntryStatus } from '../common/enums';
 import { generateDocumentNumber } from '../common/utils/document-number.util';
 import { CreateJournalEntryInput } from './dto/journal-entry.dto';
 
+export const JOURNAL_ENTRY_POSTED_EVENT = 'journal-entry.posted';
+
+export interface JournalEntryPostedPayload {
+  journalEntryId: string;
+  sourceType: string;
+  sourceId?: string;
+}
+
 /**
  * Central general-ledger posting engine. Every module that needs to record
  * accrual/depreciation/contract financial impact goes through here so that
  * the books stay double-entry balanced by construction, not by convention.
+ *
+ * Entries are always created as DRAFT. They only take financial effect once
+ * an authorized user calls `approve`, which flips them to POSTED and emits
+ * `journal-entry.posted` so the originating module (expenses/assets/...) can
+ * finalize its own downstream state (e.g. mark an accrual period POSTED).
  */
 @Injectable()
 export class JournalEntriesService {
   constructor(
     @InjectRepository(JournalEntry) private readonly entryRepo: Repository<JournalEntry>,
     @InjectRepository(JournalEntryLine) private readonly lineRepo: Repository<JournalEntryLine>,
+    private readonly events: EventEmitter2,
   ) {}
 
-  findAll(): Promise<JournalEntry[]> {
-    return this.entryRepo.find({ relations: ['lines', 'lines.account'], order: { entryDate: 'DESC' } });
+  findAll(status?: JournalEntryStatus): Promise<JournalEntry[]> {
+    return this.entryRepo.find({
+      where: status ? { status } : {},
+      relations: ['lines', 'lines.account'],
+      order: { entryDate: 'DESC' },
+    });
   }
 
   async findOne(id: string): Promise<JournalEntry> {
@@ -31,8 +50,8 @@ export class JournalEntriesService {
     return entry;
   }
 
-  /** Creates a balanced entry directly in POSTED status. Throws if debits != credits. */
-  async createAndPost(input: CreateJournalEntryInput): Promise<JournalEntry> {
+  /** Creates a balanced entry in DRAFT status. Throws if debits != credits. */
+  async create(input: CreateJournalEntryInput): Promise<JournalEntry> {
     this.assertBalanced(input);
 
     const entry = this.entryRepo.create({
@@ -42,20 +61,45 @@ export class JournalEntriesService {
       sourceType: input.sourceType,
       sourceId: input.sourceId,
       createdBy: input.createdBy,
-      status: JournalEntryStatus.POSTED,
-      postedAt: new Date(),
+      status: JournalEntryStatus.DRAFT,
       lines: input.lines.map((line) =>
         this.lineRepo.create({
           accountId: line.accountId,
           debit: line.debit ?? 0,
           credit: line.credit ?? 0,
           description: line.description,
-          departmentId: line.departmentId ?? undefined,
         }),
       ),
     });
 
     return this.entryRepo.save(entry);
+  }
+
+  /** Approves a DRAFT entry: makes it POSTED and notifies listeners of the resulting financial effect. */
+  async approve(id: string, userId?: string): Promise<JournalEntry> {
+    const entry = await this.findOne(id);
+    if (entry.status !== JournalEntryStatus.DRAFT) {
+      throw new BadRequestException(`Journal entry ${entry.entryNumber} is already ${entry.status}`);
+    }
+
+    const totalDebit = entry.lines.reduce((sum, l) => sum + Number(l.debit), 0);
+    const totalCredit = entry.lines.reduce((sum, l) => sum + Number(l.credit), 0);
+    if (Math.abs(totalDebit - totalCredit) > 0.001) {
+      throw new BadRequestException('Journal entry is not balanced and cannot be approved');
+    }
+
+    entry.status = JournalEntryStatus.POSTED;
+    entry.postedAt = new Date();
+    entry.approvedBy = userId;
+    const saved = await this.entryRepo.save(entry);
+
+    this.events.emit(JOURNAL_ENTRY_POSTED_EVENT, {
+      journalEntryId: saved.id,
+      sourceType: saved.sourceType,
+      sourceId: saved.sourceId,
+    } as JournalEntryPostedPayload);
+
+    return saved;
   }
 
   private assertBalanced(input: CreateJournalEntryInput): void {

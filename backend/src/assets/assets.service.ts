@@ -1,15 +1,16 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { OnEvent } from '@nestjs/event-emitter';
 import { Repository } from 'typeorm';
 import { FixedAsset } from './entities/fixed-asset.entity';
 import { AssetDepreciationSchedule } from './entities/asset-depreciation-schedule.entity';
-import { AccrualPeriodStatus, AssetStatus, JournalSourceType } from '../common/enums';
+import { AccrualPeriodStatus, AssetStatus, JournalEntryStatus, JournalSourceType } from '../common/enums';
 import { generateDocumentNumber } from '../common/utils/document-number.util';
 import { generateStraightLinePeriods } from '../common/utils/period-schedule.util';
 import { DEFAULT_ACCOUNT_CODES } from '../common/constants/default-accounts';
 import { CreateFixedAssetDto, DisposeAssetDto } from './dto/create-asset.dto';
 import { AssetCategoriesService } from './asset-categories.service';
-import { JournalEntriesService } from '../accounting/journal-entries.service';
+import { JournalEntriesService, JournalEntryPostedPayload, JOURNAL_ENTRY_POSTED_EVENT } from '../accounting/journal-entries.service';
 import { AccountsService } from '../accounting/accounts.service';
 
 @Injectable()
@@ -86,7 +87,7 @@ export class AssetsService {
     return this.assetRepo.save(asset);
   }
 
-  /** Posts the acquisition entry: Dr Fixed Asset / Cr Accounts Payable. Required before depreciating. */
+  /** Drafts the acquisition entry: Dr Fixed Asset / Cr Accounts Payable. Must be approved before depreciating. */
   async recordAcquisition(id: string, payableAccountId?: string, userId?: string): Promise<FixedAsset> {
     const asset = await this.findOne(id);
     if (asset.acquisitionJournalEntryId) {
@@ -95,7 +96,7 @@ export class AssetsService {
 
     const resolvedPayableAccountId = payableAccountId ?? (await this.defaultAccountId(DEFAULT_ACCOUNT_CODES.ACCOUNTS_PAYABLE));
 
-    const entry = await this.journalEntries.createAndPost({
+    const entry = await this.journalEntries.create({
       entryDate: asset.acquisitionDate,
       description: `Asset acquisition: ${asset.name} (${asset.assetNumber})`,
       sourceType: JournalSourceType.ASSET_ACQUISITION,
@@ -111,11 +112,15 @@ export class AssetsService {
     return this.assetRepo.save(asset);
   }
 
-  /** Posts one period's depreciation: Dr Depreciation Expense / Cr Accumulated Depreciation. */
+  /** Drafts one period's depreciation entry: Dr Depreciation Expense / Cr Accumulated Depreciation. Awaits GL approval. */
   async postDepreciationPeriod(assetId: string, scheduleId: string, userId?: string): Promise<FixedAsset> {
     const asset = await this.findOne(assetId);
     if (!asset.acquisitionJournalEntryId) {
       throw new BadRequestException('Record the acquisition entry before posting depreciation');
+    }
+    const acquisitionEntry = await this.journalEntries.findOne(asset.acquisitionJournalEntryId);
+    if (acquisitionEntry.status !== JournalEntryStatus.POSTED) {
+      throw new BadRequestException('The acquisition entry must be approved before posting depreciation');
     }
     if (asset.status === AssetStatus.DISPOSED) {
       throw new BadRequestException('Cannot depreciate a disposed asset');
@@ -129,7 +134,7 @@ export class AssetsService {
       throw new BadRequestException(`Period ${period.periodLabel} is already ${period.status}`);
     }
 
-    const entry = await this.journalEntries.createAndPost({
+    const entry = await this.journalEntries.create({
       entryDate: period.periodEnd,
       description: `Depreciation ${period.periodLabel}: ${asset.name} (${asset.assetNumber})`,
       sourceType: JournalSourceType.ASSET_DEPRECIATION,
@@ -149,22 +154,16 @@ export class AssetsService {
       ],
     });
 
-    await this.scheduleRepo.update(period.id, { status: AccrualPeriodStatus.POSTED, journalEntryId: entry.id });
-
-    const refreshed = await this.findOne(assetId);
-    const allPosted = refreshed.schedule.every((s) => s.status !== AccrualPeriodStatus.PENDING);
-    if (allPosted) {
-      refreshed.status = AssetStatus.FULLY_DEPRECIATED;
-      await this.assetRepo.save(refreshed);
-    }
+    await this.scheduleRepo.update(period.id, { status: AccrualPeriodStatus.AWAITING_APPROVAL, journalEntryId: entry.id });
 
     return this.findOne(assetId);
   }
 
   /**
-   * Disposes an asset: reverses accumulated depreciation and cost, books
-   * cash/receivable for proceeds, and recognizes the resulting gain or loss.
-   * Balanced by construction: accCost - accDep = bookValue = accDep + proceeds - (cost + gainLoss).
+   * Drafts the disposal entry: reverses accumulated depreciation and cost, books cash/receivable
+   * for proceeds, and recognizes the resulting gain or loss on ONE dual-nature account (debit for
+   * a loss, credit for a gain) - matching the government chart's combined gain/loss account.
+   * Balanced by construction: accDep + proceeds + max(0,-gainLoss) == cost + max(0,gainLoss).
    */
   async disposeAsset(id: string, dto: DisposeAssetDto, userId?: string): Promise<FixedAsset> {
     const asset = await this.findOne(id);
@@ -179,6 +178,7 @@ export class AssetsService {
     const gainLoss = Math.round((dto.proceeds - bookValue) * 100) / 100;
 
     const cashAccountId = await this.defaultAccountId(DEFAULT_ACCOUNT_CODES.CASH);
+    const gainLossAccountId = await this.defaultAccountId(DEFAULT_ACCOUNT_CODES.GAIN_LOSS_ON_DISPOSAL);
     const lines: { accountId: string; debit?: number; credit?: number; description: string }[] = [];
 
     if (accumulatedDepreciation > 0) {
@@ -188,21 +188,13 @@ export class AssetsService {
       lines.push({ accountId: cashAccountId, debit: dto.proceeds, description: `Disposal proceeds - ${asset.name}` });
     }
     if (gainLoss > 0) {
-      lines.push({
-        accountId: await this.defaultAccountId(DEFAULT_ACCOUNT_CODES.GAIN_ON_DISPOSAL),
-        credit: gainLoss,
-        description: `Gain on disposal - ${asset.name}`,
-      });
+      lines.push({ accountId: gainLossAccountId, credit: gainLoss, description: `Gain on disposal - ${asset.name}` });
     } else if (gainLoss < 0) {
-      lines.push({
-        accountId: await this.defaultAccountId(DEFAULT_ACCOUNT_CODES.LOSS_ON_DISPOSAL),
-        debit: -gainLoss,
-        description: `Loss on disposal - ${asset.name}`,
-      });
+      lines.push({ accountId: gainLossAccountId, debit: -gainLoss, description: `Loss on disposal - ${asset.name}` });
     }
     lines.push({ accountId: asset.assetAccountId, credit: asset.acquisitionCost, description: asset.name });
 
-    const entry = await this.journalEntries.createAndPost({
+    const entry = await this.journalEntries.create({
       entryDate: dto.disposalDate,
       description: `Asset disposal: ${asset.name} (${asset.assetNumber})`,
       sourceType: JournalSourceType.ASSET_DISPOSAL,
@@ -216,11 +208,37 @@ export class AssetsService {
       { status: AccrualPeriodStatus.CANCELLED },
     );
 
-    asset.status = AssetStatus.DISPOSED;
     asset.disposalDate = dto.disposalDate;
     asset.disposalProceeds = dto.proceeds;
     asset.disposalJournalEntryId = entry.id;
     return this.assetRepo.save(asset);
+  }
+
+  /** Reacts to a journal entry being approved: finalizes the depreciation period / disposal it belongs to. */
+  @OnEvent(JOURNAL_ENTRY_POSTED_EVENT)
+  async onJournalEntryPosted(payload: JournalEntryPostedPayload): Promise<void> {
+    if (!payload.sourceId) return;
+
+    if (payload.sourceType === JournalSourceType.ASSET_DEPRECIATION) {
+      const period = await this.scheduleRepo.findOne({ where: { id: payload.sourceId } });
+      if (!period) return;
+      await this.scheduleRepo.update(period.id, { status: AccrualPeriodStatus.POSTED });
+
+      const asset = await this.findOne(period.assetId);
+      const allPosted = asset.schedule.every((s) => s.status !== AccrualPeriodStatus.PENDING && s.status !== AccrualPeriodStatus.AWAITING_APPROVAL);
+      if (allPosted) {
+        asset.status = AssetStatus.FULLY_DEPRECIATED;
+        await this.assetRepo.save(asset);
+      }
+      return;
+    }
+
+    if (payload.sourceType === JournalSourceType.ASSET_DISPOSAL) {
+      const asset = await this.assetRepo.findOne({ where: { id: payload.sourceId } });
+      if (!asset) return;
+      asset.status = AssetStatus.DISPOSED;
+      await this.assetRepo.save(asset);
+    }
   }
 
   private async defaultAccountId(code: string): Promise<string> {

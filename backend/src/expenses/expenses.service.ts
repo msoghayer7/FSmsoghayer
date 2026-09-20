@@ -1,14 +1,21 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { OnEvent } from '@nestjs/event-emitter';
 import { Repository } from 'typeorm';
 import { Expense } from './entities/expense.entity';
 import { ExpenseAccrualSchedule } from './entities/expense-accrual-schedule.entity';
-import { AccrualPeriodStatus, ExpenseRecognitionMethod, ExpenseStatus, JournalSourceType } from '../common/enums';
+import {
+  AccrualPeriodStatus,
+  ExpenseRecognitionMethod,
+  ExpenseStatus,
+  JournalEntryStatus,
+  JournalSourceType,
+} from '../common/enums';
 import { generateDocumentNumber } from '../common/utils/document-number.util';
 import { generateMonthlySchedule } from '../common/utils/period-schedule.util';
 import { DEFAULT_ACCOUNT_CODES } from '../common/constants/default-accounts';
 import { CreateExpenseDto } from './dto/create-expense.dto';
-import { JournalEntriesService } from '../accounting/journal-entries.service';
+import { JournalEntriesService, JournalEntryPostedPayload, JOURNAL_ENTRY_POSTED_EVENT } from '../accounting/journal-entries.service';
 import { AccountsService } from '../accounting/accounts.service';
 import { ContractsService } from '../contracts/contracts.service';
 
@@ -107,7 +114,7 @@ export class ExpensesService {
     return this.expenseRepo.save(expense);
   }
 
-  /** Approves the expense: posts the initial GL impact (full expense, or prepaid asset for straight-line). */
+  /** Business approval: drafts the initial GL entry (full expense, or prepaid asset for straight-line). Awaits GL approval to take effect. */
   async approve(id: string, userId?: string): Promise<Expense> {
     const expense = await this.findOne(id);
     if (expense.status !== ExpenseStatus.DRAFT) {
@@ -115,10 +122,10 @@ export class ExpensesService {
     }
 
     if (expense.recognitionMethod === ExpenseRecognitionMethod.IMMEDIATE) {
-      const entry = await this.journalEntries.createAndPost({
+      const entry = await this.journalEntries.create({
         entryDate: expense.invoiceDate,
         description: `Expense recognized: ${expense.description} (${expense.expenseNumber})`,
-        sourceType: JournalSourceType.EXPENSE_ACCRUAL,
+        sourceType: JournalSourceType.EXPENSE_INITIAL,
         sourceId: expense.id,
         createdBy: userId,
         lines: [
@@ -127,17 +134,13 @@ export class ExpensesService {
         ],
       });
 
-      await this.scheduleRepo.update(
-        { expenseId: expense.id },
-        { status: AccrualPeriodStatus.POSTED, journalEntryId: entry.id },
-      );
-      expense.status = ExpenseStatus.POSTED;
+      await this.scheduleRepo.update({ expenseId: expense.id }, { journalEntryId: entry.id });
       expense.initialJournalEntryId = entry.id;
     } else {
-      const entry = await this.journalEntries.createAndPost({
+      const entry = await this.journalEntries.create({
         entryDate: expense.invoiceDate,
         description: `Prepaid expense recorded: ${expense.description} (${expense.expenseNumber})`,
-        sourceType: JournalSourceType.EXPENSE_ACCRUAL,
+        sourceType: JournalSourceType.EXPENSE_INITIAL,
         sourceId: expense.id,
         createdBy: userId,
         lines: [
@@ -146,14 +149,14 @@ export class ExpensesService {
         ],
       });
 
-      expense.status = ExpenseStatus.APPROVED;
       expense.initialJournalEntryId = entry.id;
     }
 
+    expense.status = ExpenseStatus.APPROVED;
     return this.expenseRepo.save(expense);
   }
 
-  /** Recognizes one accrual period of a straight-line expense: moves amount from prepaid asset to expense. */
+  /** Drafts the recognition entry for one accrual period of a straight-line expense; awaits GL approval. */
   async recognizePeriod(expenseId: string, scheduleId: string, userId?: string): Promise<Expense> {
     const expense = await this.findOne(expenseId);
     if (expense.recognitionMethod !== ExpenseRecognitionMethod.STRAIGHT_LINE) {
@@ -161,6 +164,13 @@ export class ExpensesService {
     }
     if (expense.status !== ExpenseStatus.APPROVED) {
       throw new BadRequestException(`Expense must be APPROVED before recognizing periods (current: ${expense.status})`);
+    }
+    if (!expense.initialJournalEntryId) {
+      throw new BadRequestException('The initial prepaid entry has not been created yet');
+    }
+    const initialEntry = await this.journalEntries.findOne(expense.initialJournalEntryId);
+    if (initialEntry.status !== JournalEntryStatus.POSTED) {
+      throw new BadRequestException('The initial prepaid entry must be approved before recognizing periods');
     }
 
     const period = expense.schedule.find((s) => s.id === scheduleId);
@@ -171,7 +181,7 @@ export class ExpensesService {
       throw new BadRequestException(`Period ${period.periodLabel} is already ${period.status}`);
     }
 
-    const entry = await this.journalEntries.createAndPost({
+    const entry = await this.journalEntries.create({
       entryDate: period.periodEnd,
       description: `Accrual recognition ${period.periodLabel}: ${expense.description} (${expense.expenseNumber})`,
       sourceType: JournalSourceType.EXPENSE_ACCRUAL,
@@ -183,16 +193,39 @@ export class ExpensesService {
       ],
     });
 
-    await this.scheduleRepo.update(period.id, { status: AccrualPeriodStatus.POSTED, journalEntryId: entry.id });
-
-    const refreshed = await this.findOne(expenseId);
-    const allPosted = refreshed.schedule.every((s) => s.status === AccrualPeriodStatus.POSTED);
-    if (allPosted) {
-      refreshed.status = ExpenseStatus.POSTED;
-      await this.expenseRepo.save(refreshed);
-    }
+    await this.scheduleRepo.update(period.id, { status: AccrualPeriodStatus.AWAITING_APPROVAL, journalEntryId: entry.id });
 
     return this.findOne(expenseId);
+  }
+
+  /** Reacts to a journal entry being approved: finalizes the schedule row / expense status it belongs to. */
+  @OnEvent(JOURNAL_ENTRY_POSTED_EVENT)
+  async onJournalEntryPosted(payload: JournalEntryPostedPayload): Promise<void> {
+    if (!payload.sourceId) return;
+
+    if (payload.sourceType === JournalSourceType.EXPENSE_INITIAL) {
+      const expense = await this.expenseRepo.findOne({ where: { id: payload.sourceId } });
+      if (!expense) return;
+      if (expense.recognitionMethod === ExpenseRecognitionMethod.IMMEDIATE) {
+        await this.scheduleRepo.update({ expenseId: expense.id }, { status: AccrualPeriodStatus.POSTED });
+        expense.status = ExpenseStatus.POSTED;
+        await this.expenseRepo.save(expense);
+      }
+      return;
+    }
+
+    if (payload.sourceType === JournalSourceType.EXPENSE_ACCRUAL) {
+      const period = await this.scheduleRepo.findOne({ where: { id: payload.sourceId } });
+      if (!period) return;
+      await this.scheduleRepo.update(period.id, { status: AccrualPeriodStatus.POSTED });
+
+      const expense = await this.findOne(period.expenseId);
+      const allPosted = expense.schedule.every((s) => s.status === AccrualPeriodStatus.POSTED);
+      if (allPosted) {
+        expense.status = ExpenseStatus.POSTED;
+        await this.expenseRepo.save(expense);
+      }
+    }
   }
 
   private async defaultAccountId(code: string): Promise<string> {

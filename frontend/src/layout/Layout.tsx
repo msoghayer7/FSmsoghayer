@@ -6,6 +6,10 @@ const navItems = [
   { to: '/contracts', label: 'العقود' },
   { to: '/expenses', label: 'المصروفات (الاستحقاق)' },
   { to: '/assets', label: 'الأصول الثابتة' },
+  { to: '/accounts', label: 'دليل الحسابات' },
+  { to: '/journal-entries', label: 'القيود اليومية' },
+  { to: '/trial-balance', label: 'ميزان المراجعة' },
+  { to: '/settings', label: 'المعلومات العامة' },
 ];
 
 export default function Layout() {

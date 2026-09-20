@@ -7,13 +7,19 @@ export interface AuthUser {
   role: UserRole;
 }
 
-export type AccountType = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';
+export type AccountType = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE' | 'MIXED' | 'OFF_BALANCE' | 'OTHER';
+export type AccountBalanceSide = 'DEBIT' | 'CREDIT' | 'BOTH' | 'OFF_BALANCE' | 'OTHER';
 
 export interface Account {
   id: string;
   code: string;
   name: string;
+  level: number;
+  parentCode?: string | null;
   type: AccountType;
+  balanceSide: AccountBalanceSide;
+  isPostable: boolean;
+  statementType?: string | null;
   isActive: boolean;
 }
 
@@ -25,13 +31,38 @@ export interface JournalEntryLine {
   description?: string;
 }
 
+export type JournalEntryStatus = 'DRAFT' | 'POSTED';
+
 export interface JournalEntry {
   id: string;
   entryNumber: string;
   entryDate: string;
   description: string;
-  status: 'DRAFT' | 'POSTED';
+  status: JournalEntryStatus;
+  sourceType: string;
+  createdBy?: string;
+  approvedBy?: string;
+  postedAt?: string;
+  createdAt: string;
   lines: JournalEntryLine[];
+}
+
+export interface TrialBalanceRow {
+  code: string;
+  name: string;
+  level: number;
+  debit: number;
+  credit: number;
+  balance: number;
+}
+
+export interface EntityProfile {
+  id: string;
+  entityName: string;
+  entityNumber?: string | null;
+  fiscalYearStartMonth: number;
+  currency: string;
+  address?: string | null;
 }
 
 export interface Department {
@@ -79,7 +110,7 @@ export interface Contract {
 
 export type ExpenseRecognitionMethod = 'IMMEDIATE' | 'STRAIGHT_LINE';
 export type ExpenseStatus = 'DRAFT' | 'APPROVED' | 'POSTED' | 'CANCELLED';
-export type AccrualPeriodStatus = 'PENDING' | 'POSTED' | 'CANCELLED';
+export type AccrualPeriodStatus = 'PENDING' | 'AWAITING_APPROVAL' | 'POSTED' | 'CANCELLED';
 
 export interface ExpenseAccrualSchedule {
   id: string;

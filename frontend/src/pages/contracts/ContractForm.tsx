@@ -45,7 +45,7 @@ export default function ContractForm() {
   useEffect(() => {
     apiClient.get<BusinessPartner[]>('/business-partners').then((r) => setPartners(r.data));
     apiClient.get<Department[]>('/departments').then((r) => setDepartments(r.data));
-    apiClient.get<Account[]>('/accounts').then((r) => setAccounts(r.data.filter((a) => a.type === 'EXPENSE')));
+    apiClient.get<Account[]>('/accounts/postable', { params: { type: 'EXPENSE' } }).then((r) => setAccounts(r.data));
   }, []);
 
   const update = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));

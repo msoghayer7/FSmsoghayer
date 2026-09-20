@@ -1,43 +1,115 @@
 import * as bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 import { AppDataSource } from '../../config/data-source';
 import { Account } from '../../accounting/entities/account.entity';
 import { User } from '../../users/user.entity';
 import { Department } from '../../organization/entities/department.entity';
 import { BusinessPartner } from '../../organization/entities/business-partner.entity';
 import { AssetCategory } from '../../assets/entities/asset-category.entity';
-import { AccountType, PartnerType, UserRole } from '../../common/enums';
+import { AccountBalanceSide, AccountType, PartnerType, UserRole } from '../../common/enums';
+import { DEFAULT_ACCOUNT_CODES } from '../../common/constants/default-accounts';
 
-const CHART_OF_ACCOUNTS: { code: string; name: string; type: AccountType }[] = [
-  { code: '1000', name: 'Cash', type: AccountType.ASSET },
-  { code: '1010', name: 'Bank', type: AccountType.ASSET },
-  { code: '1100', name: 'Accounts Receivable', type: AccountType.ASSET },
-  { code: '1200', name: 'Prepaid Expenses', type: AccountType.ASSET },
-  { code: '1500', name: 'Fixed Assets', type: AccountType.ASSET },
-  { code: '1590', name: 'Accumulated Depreciation', type: AccountType.ASSET },
-  { code: '2000', name: 'Accounts Payable', type: AccountType.LIABILITY },
-  { code: '3000', name: "Owner's Equity", type: AccountType.EQUITY },
-  { code: '4000', name: 'Revenue', type: AccountType.REVENUE },
-  { code: '4900', name: 'Gain on Disposal of Assets', type: AccountType.REVENUE },
-  { code: '5000', name: 'General & Administrative Expenses', type: AccountType.EXPENSE },
-  { code: '5100', name: 'Rent Expense', type: AccountType.EXPENSE },
-  { code: '5200', name: 'Depreciation Expense', type: AccountType.EXPENSE },
-  { code: '5900', name: 'Loss on Disposal of Assets', type: AccountType.EXPENSE },
-];
+interface ChartAccountRow {
+  code: string;
+  name: string;
+  level: number;
+  parentCode: string | null;
+  isPostable: boolean;
+  nature: string;
+  balanceSide: string;
+  isActive: boolean;
+  statementType: string | null;
+}
+
+const NATURE_TO_ACCOUNT_TYPE: Record<string, AccountType> = {
+  REVENUE: AccountType.REVENUE,
+  EXPENSE: AccountType.EXPENSE,
+  ASSET: AccountType.ASSET,
+  LIABILITY: AccountType.LIABILITY,
+  NET_ASSETS: AccountType.EQUITY,
+  MIXED: AccountType.MIXED,
+  OFF_BALANCE: AccountType.OFF_BALANCE,
+  OTHER: AccountType.OTHER,
+};
+
+const SIDE_TO_BALANCE_SIDE: Record<string, AccountBalanceSide> = {
+  DEBIT: AccountBalanceSide.DEBIT,
+  CREDIT: AccountBalanceSide.CREDIT,
+  BOTH: AccountBalanceSide.BOTH,
+  OFF_BALANCE: AccountBalanceSide.OFF_BALANCE,
+  OTHER: AccountBalanceSide.OTHER,
+};
+
+/** يستورد دليل الحساب الحكومي الموحد كاملاً (2,589 حسابًا) من الملف المستخرج من ملف الإكسل الرسمي. */
+async function importChartOfAccounts(): Promise<Map<string, string>> {
+  const accountRepo = AppDataSource.getRepository(Account);
+  const existing = await accountRepo.count();
+  const codeToId = new Map<string, string>();
+
+  if (existing > 0) {
+    console.log(`  chart of accounts already has ${existing} rows, skipping import`);
+    const all = await accountRepo.find({ select: ['id', 'code'] });
+    all.forEach((a) => codeToId.set(a.code, a.id));
+    return codeToId;
+  }
+
+  const dataPath = path.join(__dirname, 'data', 'chart-of-accounts.json');
+  const rows: ChartAccountRow[] = JSON.parse(fs.readFileSync(dataPath, 'utf-8'));
+  rows.sort((a, b) => a.code.length - b.code.length || a.code.localeCompare(b.code));
+
+  rows.forEach((r) => codeToId.set(r.code, randomUUID()));
+
+  const codeToRow = new Map(rows.map((r) => [r.code, r]));
+  const pathCache = new Map<string, string[]>();
+  const buildPath = (code: string): string[] => {
+    if (pathCache.has(code)) return pathCache.get(code)!;
+    const row = codeToRow.get(code)!;
+    const path = row.parentCode ? [...buildPath(row.parentCode), code] : [code];
+    pathCache.set(code, path);
+    return path;
+  };
+
+  const entities = rows.map((r) =>
+    accountRepo.create({
+      id: codeToId.get(r.code),
+      code: r.code,
+      name: r.name,
+      level: r.level,
+      parentCode: r.parentCode,
+      parentId: r.parentCode ? codeToId.get(r.parentCode) : null,
+      path: buildPath(r.code),
+      type: NATURE_TO_ACCOUNT_TYPE[r.nature] ?? AccountType.OTHER,
+      balanceSide: SIDE_TO_BALANCE_SIDE[r.balanceSide] ?? AccountBalanceSide.OTHER,
+      isPostable: r.isPostable,
+      statementType: r.statementType,
+      isActive: r.isActive,
+      allowManualEntries: true,
+    }),
+  );
+
+  const CHUNK = 400;
+  for (let i = 0; i < entities.length; i += CHUNK) {
+    await accountRepo.insert(entities.slice(i, i + CHUNK));
+  }
+  console.log(`  imported ${entities.length} accounts from the unified government chart of accounts`);
+
+  return codeToId;
+}
 
 async function seed() {
   await AppDataSource.initialize();
   console.log('Connected to database, seeding...');
 
-  const accountRepo = AppDataSource.getRepository(Account);
-  const accountsByCode = new Map<string, Account>();
-  for (const def of CHART_OF_ACCOUNTS) {
-    let account = await accountRepo.findOneBy({ code: def.code });
-    if (!account) {
-      account = await accountRepo.save(accountRepo.create(def));
-      console.log(`  created account ${def.code} ${def.name}`);
+  const codeToId = await importChartOfAccounts();
+  const accountId = (code: string): string => {
+    const id = codeToId.get(code);
+    if (!id) {
+      throw new Error(`Default account code ${code} not found in the imported chart of accounts`);
     }
-    accountsByCode.set(def.code, account);
-  }
+    return id;
+  };
 
   const userRepo = AppDataSource.getRepository(User);
   const adminEmail = 'admin@fsm-erp.local';
@@ -57,13 +129,13 @@ async function seed() {
   const deptRepo = AppDataSource.getRepository(Department);
   let finance = await deptRepo.findOneBy({ code: 'FIN' });
   if (!finance) {
-    finance = await deptRepo.save(deptRepo.create({ code: 'FIN', name: 'Finance' }));
-    console.log('  created department FIN - Finance');
+    finance = await deptRepo.save(deptRepo.create({ code: 'FIN', name: 'الشؤون المالية' }));
+    console.log('  created department FIN');
   }
   let it = await deptRepo.findOneBy({ code: 'IT' });
   if (!it) {
-    it = await deptRepo.save(deptRepo.create({ code: 'IT', name: 'Information Technology' }));
-    console.log('  created department IT - Information Technology');
+    it = await deptRepo.save(deptRepo.create({ code: 'IT', name: 'تقنية المعلومات' }));
+    console.log('  created department IT');
   }
 
   const partnerRepo = AppDataSource.getRepository(BusinessPartner);
@@ -72,7 +144,7 @@ async function seed() {
     vendor = await partnerRepo.save(
       partnerRepo.create({
         code: 'V-0001',
-        name: 'Al Riyadh Office Solutions Co.',
+        name: 'شركة الرياض لحلول المكاتب',
         type: PartnerType.VENDOR,
         taxNumber: '300000000000003',
         email: 'billing@example-vendor.test',
@@ -83,18 +155,18 @@ async function seed() {
   }
 
   const categoryRepo = AppDataSource.getRepository(AssetCategory);
-  let itEquipment = await categoryRepo.findOneBy({ name: 'IT Equipment' });
+  let itEquipment = await categoryRepo.findOneBy({ name: 'أجهزة ومعدات تقنية' });
   if (!itEquipment) {
     itEquipment = await categoryRepo.save(
       categoryRepo.create({
-        name: 'IT Equipment',
+        name: 'أجهزة ومعدات تقنية',
         defaultUsefulLifeMonths: 36,
-        assetAccountId: accountsByCode.get('1500')!.id,
-        depreciationExpenseAccountId: accountsByCode.get('5200')!.id,
-        accumulatedDepreciationAccountId: accountsByCode.get('1590')!.id,
+        assetAccountId: accountId(DEFAULT_ACCOUNT_CODES.FIXED_ASSETS),
+        depreciationExpenseAccountId: accountId(DEFAULT_ACCOUNT_CODES.DEPRECIATION_EXPENSE),
+        accumulatedDepreciationAccountId: accountId(DEFAULT_ACCOUNT_CODES.ACCUMULATED_DEPRECIATION),
       }),
     );
-    console.log('  created asset category IT Equipment (36 months)');
+    console.log('  created asset category: أجهزة ومعدات تقنية (36 months)');
   }
 
   console.log('\nSeed complete.');

@@ -34,6 +34,9 @@ export class JournalEntry {
   @Column({ nullable: true })
   createdBy?: string;
 
+  @Column({ nullable: true })
+  approvedBy?: string;
+
   @Column({ type: 'timestamptz', nullable: true })
   postedAt?: Date | null;
 

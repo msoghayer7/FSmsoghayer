@@ -29,7 +29,7 @@ export default function ExpenseForm() {
 
   useEffect(() => {
     apiClient.get<BusinessPartner[]>('/business-partners').then((r) => setPartners(r.data));
-    apiClient.get<Account[]>('/accounts').then((r) => setExpenseAccounts(r.data.filter((a) => a.type === 'EXPENSE')));
+    apiClient.get<Account[]>('/accounts/postable', { params: { type: 'EXPENSE' } }).then((r) => setExpenseAccounts(r.data));
     if (contractId) {
       apiClient.get<Contract>(`/contracts/${contractId}`).then((r) => {
         setContract(r.data);

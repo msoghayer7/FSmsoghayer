@@ -2,7 +2,6 @@ import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 't
 import { DecimalColumnTransformer } from '../../common/transformers/decimal.transformer';
 import { JournalEntry } from './journal-entry.entity';
 import { Account } from './account.entity';
-import { Department } from '../../organization/entities/department.entity';
 
 @Entity('journal_entry_lines')
 export class JournalEntryLine {
@@ -21,12 +20,6 @@ export class JournalEntryLine {
 
   @Column()
   accountId: string;
-
-  @ManyToOne(() => Department, { nullable: true })
-  department?: Department | null;
-
-  @Column({ nullable: true })
-  departmentId?: string;
 
   @Column({ type: 'numeric', precision: 18, scale: 2, default: 0, transformer: new DecimalColumnTransformer() })
   debit: number;

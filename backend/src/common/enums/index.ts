@@ -12,6 +12,17 @@ export enum AccountType {
   EQUITY = 'EQUITY',
   REVENUE = 'REVENUE',
   EXPENSE = 'EXPENSE',
+  MIXED = 'MIXED',
+  OFF_BALANCE = 'OFF_BALANCE',
+  OTHER = 'OTHER',
+}
+
+export enum AccountBalanceSide {
+  DEBIT = 'DEBIT',
+  CREDIT = 'CREDIT',
+  BOTH = 'BOTH',
+  OFF_BALANCE = 'OFF_BALANCE',
+  OTHER = 'OTHER',
 }
 
 export enum JournalEntryStatus {
@@ -21,7 +32,9 @@ export enum JournalEntryStatus {
 
 export enum JournalSourceType {
   MANUAL = 'MANUAL',
+  MANUAL_IMPORT = 'MANUAL_IMPORT',
   CONTRACT = 'CONTRACT',
+  EXPENSE_INITIAL = 'EXPENSE_INITIAL',
   EXPENSE_ACCRUAL = 'EXPENSE_ACCRUAL',
   ASSET_ACQUISITION = 'ASSET_ACQUISITION',
   ASSET_DEPRECIATION = 'ASSET_DEPRECIATION',
@@ -73,6 +86,8 @@ export enum ExpenseStatus {
 
 export enum AccrualPeriodStatus {
   PENDING = 'PENDING',
+  /** تم إنشاء القيد كمسودة وينتظر اعتماد صاحب الصلاحية ليصبح نافذًا. */
+  AWAITING_APPROVAL = 'AWAITING_APPROVAL',
   POSTED = 'POSTED',
   CANCELLED = 'CANCELLED',
 }
