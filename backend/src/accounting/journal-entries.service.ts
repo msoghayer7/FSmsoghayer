@@ -5,7 +5,7 @@ import { Repository } from 'typeorm';
 import { JournalEntry } from './entities/journal-entry.entity';
 import { JournalEntryLine } from './entities/journal-entry-line.entity';
 import { FiscalYearStatus, JournalEntryStatus } from '../common/enums';
-import { generateDocumentNumber } from '../common/utils/document-number.util';
+import { formatJournalEntryNumber } from '../common/utils/document-number.util';
 import { CreateJournalEntryInput } from './dto/journal-entry.dto';
 import { FiscalYearsService } from './fiscal-years.service';
 
@@ -31,7 +31,6 @@ export interface JournalEntryPostedPayload {
 export class JournalEntriesService {
   constructor(
     @InjectRepository(JournalEntry) private readonly entryRepo: Repository<JournalEntry>,
-    @InjectRepository(JournalEntryLine) private readonly lineRepo: Repository<JournalEntryLine>,
     private readonly events: EventEmitter2,
     private readonly fiscalYears: FiscalYearsService,
   ) {}
@@ -52,30 +51,42 @@ export class JournalEntriesService {
     return entry;
   }
 
-  /** Creates a balanced entry in DRAFT status. Throws if debits != credits or the date falls in a closed/undefined fiscal year. */
+  /**
+   * Creates a balanced entry in DRAFT status. Throws if debits != credits or
+   * the date falls in a closed/undefined fiscal year. Runs in a transaction
+   * that row-locks the fiscal year to allocate a gapless sequential entry
+   * number (see formatJournalEntryNumber) — this prevents two concurrent
+   * creates in the same fiscal year from ever getting the same number.
+   */
   async create(input: CreateJournalEntryInput): Promise<JournalEntry> {
     this.assertBalanced(input);
-    await this.assertFiscalYearOpen(input.entryDate);
 
-    const entry = this.entryRepo.create({
-      entryNumber: generateDocumentNumber('JE'),
-      entryDate: input.entryDate,
-      description: input.description,
-      sourceType: input.sourceType,
-      sourceId: input.sourceId,
-      createdBy: input.createdBy,
-      status: JournalEntryStatus.DRAFT,
-      lines: input.lines.map((line) =>
-        this.lineRepo.create({
-          accountId: line.accountId,
-          debit: line.debit ?? 0,
-          credit: line.credit ?? 0,
-          description: line.description,
-        }),
-      ),
+    return this.entryRepo.manager.transaction(async (manager) => {
+      const year = await this.fiscalYears.lockOpenYearForDate(input.entryDate, manager);
+      const sequence = await this.fiscalYears.allocateNextJournalEntryNumber(year, manager);
+
+      const entryRepo = manager.getRepository(JournalEntry);
+      const lineRepo = manager.getRepository(JournalEntryLine);
+      const entry = entryRepo.create({
+        entryNumber: formatJournalEntryNumber(year.yearNumber, sequence),
+        entryDate: input.entryDate,
+        description: input.description,
+        sourceType: input.sourceType,
+        sourceId: input.sourceId,
+        createdBy: input.createdBy,
+        status: JournalEntryStatus.DRAFT,
+        lines: input.lines.map((line) =>
+          lineRepo.create({
+            accountId: line.accountId,
+            debit: line.debit ?? 0,
+            credit: line.credit ?? 0,
+            description: line.description,
+          }),
+        ),
+      });
+
+      return entryRepo.save(entry);
     });
-
-    return this.entryRepo.save(entry);
   }
 
   /** Approves a DRAFT entry: makes it POSTED and notifies listeners of the resulting financial effect. */

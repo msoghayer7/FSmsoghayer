@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import { EntityManager, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { FiscalYear } from './entities/fiscal-year.entity';
 import { FiscalYearStatus } from '../common/enums';
 
@@ -25,6 +25,37 @@ export class FiscalYearsService {
   /** السنة المالية التي يقع فيها تاريخ معيّن، أو null إن لم تُنشأ بعد. */
   findYearForDate(date: string): Promise<FiscalYear | null> {
     return this.repo.findOne({ where: { startDate: LessThanOrEqual(date), endDate: MoreThanOrEqual(date) } });
+  }
+
+  /**
+   * Finds and row-locks the open fiscal year covering `date`, within an
+   * existing transaction. Must run inside a transaction (the caller passes
+   * its transactional `manager`) so the row lock actually applies —
+   * required before allocating a journal entry number to prevent two
+   * concurrent creates from getting the same sequence value.
+   */
+  async lockOpenYearForDate(date: string, manager: EntityManager): Promise<FiscalYear> {
+    const year = await manager
+      .getRepository(FiscalYear)
+      .createQueryBuilder('fy')
+      .setLock('pessimistic_write')
+      .where('fy.startDate <= :date', { date })
+      .andWhere('fy.endDate >= :date', { date })
+      .getOne();
+    if (!year) {
+      throw new BadRequestException(`لا توجد سنة مالية مُعرَّفة تغطي تاريخ ${date}`);
+    }
+    if (year.status === FiscalYearStatus.CLOSED) {
+      throw new BadRequestException(`السنة المالية ${year.yearNumber} مقفلة، لا يمكن إنشاء أو اعتماد قيود ضمنها`);
+    }
+    return year;
+  }
+
+  /** يخصّص رقم القيد التالي ضمن السنة المالية المُقفلة بالفعل (row-locked) من `lockOpenYearForDate`. */
+  async allocateNextJournalEntryNumber(year: FiscalYear, manager: EntityManager): Promise<number> {
+    year.lastJournalEntryNumber += 1;
+    await manager.getRepository(FiscalYear).save(year);
+    return year.lastJournalEntryNumber;
   }
 
   async create(yearNumber: number): Promise<FiscalYear> {

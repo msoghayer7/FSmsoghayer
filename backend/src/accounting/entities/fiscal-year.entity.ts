@@ -24,4 +24,8 @@ export class FiscalYear {
 
   @Column({ type: 'varchar', nullable: true })
   closedBy?: string | null;
+
+  /** آخر رقم مُصدَر لتسلسل القيود اليومية ضمن هذه السنة (انظر formatJournalEntryNumber). */
+  @Column({ type: 'int', default: 0 })
+  lastJournalEntryNumber: number;
 }
