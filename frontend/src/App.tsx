@@ -18,6 +18,11 @@ import JournalEntriesPage from './pages/accounting/JournalEntriesPage';
 import JournalEntryDetail from './pages/accounting/JournalEntryDetail';
 import TrialBalancePage from './pages/accounting/TrialBalancePage';
 import FiscalYearsPage from './pages/accounting/FiscalYearsPage';
+import ReconciliationsList from './pages/reconciliation/ReconciliationsList';
+import ReconciliationForm from './pages/reconciliation/ReconciliationForm';
+import ReconciliationDetail from './pages/reconciliation/ReconciliationDetail';
+import ReportsPage from './pages/accounting/ReportsPage';
+import PolicyLibraryPage from './pages/policy-library/PolicyLibraryPage';
 
 function RequireAuth({ children }: { children: React.ReactElement }) {
   const { user } = useAuth();
@@ -55,6 +60,11 @@ export default function App() {
         <Route path="journal-entries/:id" element={<JournalEntryDetail />} />
         <Route path="trial-balance" element={<TrialBalancePage />} />
         <Route path="fiscal-years" element={<FiscalYearsPage />} />
+        <Route path="reconciliations" element={<ReconciliationsList />} />
+        <Route path="reconciliations/new" element={<ReconciliationForm />} />
+        <Route path="reconciliations/:id" element={<ReconciliationDetail />} />
+        <Route path="reports" element={<ReportsPage />} />
+        <Route path="policy-library" element={<PolicyLibraryPage />} />
       </Route>
     </Routes>
   );

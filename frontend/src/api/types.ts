@@ -195,3 +195,60 @@ export interface FixedAsset {
   disposalJournalEntryId?: string;
   schedule: AssetDepreciationSchedule[];
 }
+
+export type ReconciliationType = 'BANK' | 'AP_AR' | 'INTER_ENTITY';
+export type ReconciliationStatus = 'DRAFT' | 'COMPLETED';
+
+export interface ReconciliationItem {
+  id: string;
+  description: string;
+  amount: number;
+}
+
+export interface Reconciliation {
+  id: string;
+  reconciliationNumber: string;
+  type: ReconciliationType;
+  account: Account;
+  accountId: string;
+  referenceLabel: string;
+  periodEnd: string;
+  glBalance: number;
+  externalBalance: number;
+  notes?: string | null;
+  status: ReconciliationStatus;
+  completedBy?: string | null;
+  completedAt?: string | null;
+  items: ReconciliationItem[];
+  adjustedBalance: number;
+  difference: number;
+}
+
+export interface LedgerLine {
+  entryId: string;
+  entryNumber: string;
+  entryDate: string;
+  description: string;
+  debit: number;
+  credit: number;
+  runningBalance: number;
+}
+
+export interface AccountStatement {
+  account: Account;
+  from: string | null;
+  to: string | null;
+  openingBalance: number;
+  lines: LedgerLine[];
+  closingBalance: number;
+}
+
+export type PolicyCategory = 'STANDARD' | 'PROCEDURE' | 'FORM';
+
+export interface PolicyDocument {
+  id: string;
+  category: PolicyCategory;
+  code?: string | null;
+  title: string;
+  description?: string | null;
+}

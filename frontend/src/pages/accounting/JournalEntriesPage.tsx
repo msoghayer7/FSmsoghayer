@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { apiClient } from '../../api/client';
+import { apiClient, apiErrorMessage } from '../../api/client';
 import type { JournalEntry, JournalEntryStatus } from '../../api/types';
 import { formatCurrency } from '../../utils/format';
 import { StatusBadge } from '../../components/StatusBadge';
@@ -12,18 +12,93 @@ const TABS: { value: JournalEntryStatus | ''; label: string }[] = [
   { value: 'POSTED', label: 'مرحّلة' },
 ];
 
+interface ImportResult {
+  createdCount: number;
+  created: { referenceGroup: string; entryId: string; entryNumber: string }[];
+  errors: { referenceGroup: string; message: string }[];
+}
+
 export default function JournalEntriesPage() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [tab, setTab] = useState<JournalEntryStatus | ''>('');
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  const load = () => {
     apiClient.get<JournalEntry[]>('/journal-entries', { params: tab ? { status: tab } : {} }).then((r) => setEntries(r.data));
-  }, [tab]);
+  };
+
+  useEffect(load, [tab]);
+
+  const downloadTemplate = async () => {
+    const response = await apiClient.get('/journal-entries/import/template', { responseType: 'blob' });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'قالب-استيراد-القيود.xlsx';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportError(null);
+    setImportResult(null);
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const { data } = await apiClient.post<ImportResult>('/journal-entries/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setImportResult(data);
+      load();
+    } catch (err) {
+      setImportError(apiErrorMessage(err));
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   return (
     <div>
       <div className="page-header">
         <h1>القيود اليومية</h1>
+      </div>
+
+      <div className="card">
+        <h2>استيراد قيود من Excel</h2>
+        <p className="muted small">
+          الأسطر التي تشترك في نفس "رقم المرجع" تُجمع في قيد واحد. يجب أن يكون كل قيد متوازنًا (مجموع المدين = مجموع الدائن). تُنشأ
+          القيود المستوردة كمسودات بانتظار الاعتماد.
+        </p>
+        <div className="actions-row" style={{ borderTop: 'none', paddingTop: 0 }}>
+          <button className="btn btn-secondary" onClick={downloadTemplate}>
+            تنزيل نموذج الاستيراد
+          </button>
+          <input ref={fileInputRef} type="file" accept=".xlsx" onChange={handleFileChange} disabled={uploading} />
+        </div>
+        {importError && <div className="alert alert-error">{importError}</div>}
+        {importResult && (
+          <div className={importResult.errors.length ? 'alert alert-error' : 'alert alert-info'}>
+            تم إنشاء {importResult.createdCount} قيد كمسودة.
+            {importResult.errors.length > 0 && (
+              <ul style={{ margin: '0.5rem 0 0', paddingInlineStart: '1.2rem' }}>
+                {importResult.errors.map((e) => (
+                  <li key={e.referenceGroup}>
+                    {e.referenceGroup}: {e.message}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="card">

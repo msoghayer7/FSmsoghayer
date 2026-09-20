@@ -9,6 +9,9 @@ const navItems = [
   { to: '/accounts', label: 'دليل الحسابات' },
   { to: '/journal-entries', label: 'القيود اليومية' },
   { to: '/trial-balance', label: 'ميزان المراجعة' },
+  { to: '/reconciliations', label: 'المطابقات' },
+  { to: '/reports', label: 'التقارير' },
+  { to: '/policy-library', label: 'السياسات والمعايير' },
   { to: '/fiscal-years', label: 'السنوات المالية' },
   { to: '/settings', label: 'المعلومات العامة' },
 ];

@@ -9,6 +9,8 @@ import { AccountingModule } from './accounting/accounting.module';
 import { ContractsModule } from './contracts/contracts.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { AssetsModule } from './assets/assets.module';
+import { ReconciliationModule } from './reconciliation/reconciliation.module';
+import { PolicyLibraryModule } from './policy-library/policy-library.module';
 
 @Module({
   imports: [
@@ -37,6 +39,8 @@ import { AssetsModule } from './assets/assets.module';
     ContractsModule,
     ExpensesModule,
     AssetsModule,
+    ReconciliationModule,
+    PolicyLibraryModule,
   ],
 })
 export class AppModule {}

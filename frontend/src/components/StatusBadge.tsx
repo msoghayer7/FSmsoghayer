@@ -1,4 +1,4 @@
-const POSITIVE = new Set(['ACTIVE', 'RENEWED', 'POSTED', 'APPROVED', 'OPEN']);
+const POSITIVE = new Set(['ACTIVE', 'RENEWED', 'POSTED', 'APPROVED', 'OPEN', 'COMPLETED']);
 const NEGATIVE = new Set(['TERMINATED', 'EXPIRED', 'CANCELLED', 'DISPOSED', 'CLOSED']);
 
 export function StatusBadge({ label, status }: { label: string; status: string }) {

@@ -15,6 +15,9 @@ import { ExpenseAccrualSchedule } from '../expenses/entities/expense-accrual-sch
 import { AssetCategory } from '../assets/entities/asset-category.entity';
 import { FixedAsset } from '../assets/entities/fixed-asset.entity';
 import { AssetDepreciationSchedule } from '../assets/entities/asset-depreciation-schedule.entity';
+import { Reconciliation } from '../reconciliation/entities/reconciliation.entity';
+import { ReconciliationItem } from '../reconciliation/entities/reconciliation-item.entity';
+import { PolicyDocument } from '../policy-library/entities/policy-document.entity';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
@@ -40,5 +43,8 @@ export const AppDataSource = new DataSource({
     AssetCategory,
     FixedAsset,
     AssetDepreciationSchedule,
+    Reconciliation,
+    ReconciliationItem,
+    PolicyDocument,
   ],
 });

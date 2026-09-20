@@ -1,0 +1,470 @@
+[
+  {
+    "category": "STANDARD",
+    "code": "IPSAS Intro",
+    "title": "المقدمة العامة لمعايير المحاسبة الدولية للقطاع العام",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "Conceptual Framework",
+    "title": "الإطار المفاهيمي للتقرير المالي للقطاع العام",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "Glossary of Terms",
+    "title": "قائمة المصطلحات المستخدمة في معايير IPSAS",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IAS 34",
+    "title": "التقارير المالية المرحلية",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "RPG 1",
+    "title": "الإبلاغ عن الاستدامة المالية طويلة الأجل للجهة",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "RPG 2",
+    "title": "المناقشة والتحليل الماليان",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "RPG 3",
+    "title": "الإبلاغ عن أداء الخدمة",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 1",
+    "title": "عرض القوائم المالية",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 2",
+    "title": "قوائم التدفقات النقدية",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 3",
+    "title": "السياسات المحاسبية والتغيرات في التقديرات المحاسبية والأخطاء",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 4",
+    "title": "آثار التغيرات في أسعار صرف العملات الأجنبية",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 5",
+    "title": "تكاليف الاقتراض",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 10",
+    "title": "التقارير المالية في الاقتصادات ذات التضخم المفرط",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 12",
+    "title": "المخزون",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 14",
+    "title": "الأحداث اللاحقة لتاريخ التقرير",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 16",
+    "title": "العقارات الاستثمارية",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 19",
+    "title": "المخصصات والالتزامات المحتملة والأصول المحتملة",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 20",
+    "title": "الإفصاحات عن الأطراف ذات العلاقة",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 21",
+    "title": "هبوط قيمة الأصول غير المولدة للنقد",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 22",
+    "title": "الإفصاح عن المعلومات المالية المتعلقة بقطاع الحكومة العامة",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 24",
+    "title": "عرض معلومات الموازنة في القوائم المالية",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 26",
+    "title": "هبوط قيمة الأصول المولدة للنقد",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 27",
+    "title": "الزراعة",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 28",
+    "title": "الأدوات المالية: العرض",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 29",
+    "title": "الأدوات المالية: الاعتراف والقياس (حل محله معيار 41)",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 30",
+    "title": "الأدوات المالية: الإفصاحات",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 31",
+    "title": "الأصول غير الملموسة",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 32",
+    "title": "ترتيبات امتياز الخدمات: الجهة المانحة",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 33",
+    "title": "التطبيق الأول لأساس الاستحقاق في معايير IPSAS",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 34",
+    "title": "القوائم المالية المنفصلة",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 35",
+    "title": "القوائم المالية الموحدة",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 36",
+    "title": "الاستثمار في المنشآت الزميلة والمشاريع المشتركة",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 37",
+    "title": "الترتيبات المشتركة",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 38",
+    "title": "الإفصاح عن الحصص في المنشآت الأخرى",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 39",
+    "title": "منافع الموظفين",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 40",
+    "title": "اندماجات القطاع العام",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 41",
+    "title": "الأدوات المالية",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 42",
+    "title": "المنافع الاجتماعية",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 43",
+    "title": "عقود الإيجار",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 44",
+    "title": "الأصول غير المتداولة المحتفظ بها للبيع والعمليات المتوقفة",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 45",
+    "title": "الممتلكات والمنشآت والمعدات",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 46",
+    "title": "القياس",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 47",
+    "title": "الإيراد",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 48",
+    "title": "مصروفات التحويل",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 49",
+    "title": "خطط منافع التقاعد",
+    "description": null
+  },
+  {
+    "category": "STANDARD",
+    "code": "IPSAS 50",
+    "title": "IPSAS 50",
+    "description": null
+  },
+  {
+    "category": "PROCEDURE",
+    "code": null,
+    "title": "دليل الإجراءات والتعليمات المالية الموحد للقطاع العام",
+    "description": null
+  },
+  {
+    "category": "PROCEDURE",
+    "code": null,
+    "title": "ملحق التحديثات على دليل الإجراءات والتعليمات المالية الموحد للقطاع العام",
+    "description": null
+  },
+  {
+    "category": "PROCEDURE",
+    "code": null,
+    "title": "دليل تجميع البيانات وتوحيد القوائم المالية للجهات الحكومية والدولة",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "نموذج سند القيد",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "نموذج إثبات أمانة",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "نموذج إقرار بمعاملات أطراف ذوي علاقة",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "أمر دفع",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "إشعار مدين-دائن",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "تسوية بنكية",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "خطاب ضمان بنكي",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "مصادرة ضمان بنكي المقدم من المورد",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "طلب إنشاء سلفة",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "كشف استعاضة السلفة المستديمة",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "طلب فتح اعتماد",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "نموذج فتح أو تنشيط حساب بنكي",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "حجز مستحقات الموردين",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "سجل متابعة المطالبات",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "نموذج طلب استبعاد أو بيع أصل",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "نموذج طلب نقل أصل",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "هيكل ومحتوى التقرير الاكتواري",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "قائمة أنشطة الإقفال الشهرية",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "قائمة أنشطة الإقفال السنوية",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "نموذج مصادقة الأرصدة بين جهات القطاع العام",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "نموذج مصادقة أرصدة حسابات الدائنين والمدينين الآخرين",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "نموذج مصادقة أرصدة البنوك والاستثمارات",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "نموذج مواءمة القوائم المالية",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "نموذج استبعاد المعاملات والأرصدة بين أطراف الجهات الاقتصادية",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "بيان الجهات المشمولة بالقوائم المالية الموحدة للحكومة",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "نموذج القوائم المالية الموحدة",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "استبيان الالتزام بالسياسات المحاسبية",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "استبانة التحقق من الالتزام بمتطلبات المعايير والسياسات المحاسبية",
+    "description": null
+  },
+  {
+    "category": "FORM",
+    "code": null,
+    "title": "النموذج الاسترشادي للقوائم المالية الموحدة",
+    "description": null
+  }
+]

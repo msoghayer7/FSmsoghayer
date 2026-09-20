@@ -35,6 +35,23 @@ export enum FiscalYearStatus {
   CLOSED = 'CLOSED',
 }
 
+export enum ReconciliationType {
+  BANK = 'BANK',
+  AP_AR = 'AP_AR',
+  INTER_ENTITY = 'INTER_ENTITY',
+}
+
+export enum ReconciliationStatus {
+  DRAFT = 'DRAFT',
+  COMPLETED = 'COMPLETED',
+}
+
+export enum PolicyCategory {
+  STANDARD = 'STANDARD',
+  PROCEDURE = 'PROCEDURE',
+  FORM = 'FORM',
+}
+
 export enum JournalSourceType {
   MANUAL = 'MANUAL',
   MANUAL_IMPORT = 'MANUAL_IMPORT',

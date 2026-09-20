@@ -10,8 +10,16 @@ import { User } from '../../users/user.entity';
 import { Department } from '../../organization/entities/department.entity';
 import { BusinessPartner } from '../../organization/entities/business-partner.entity';
 import { AssetCategory } from '../../assets/entities/asset-category.entity';
-import { AccountBalanceSide, AccountType, PartnerType, UserRole } from '../../common/enums';
+import { PolicyDocument } from '../../policy-library/entities/policy-document.entity';
+import { AccountBalanceSide, AccountType, PartnerType, PolicyCategory, UserRole } from '../../common/enums';
 import { DEFAULT_ACCOUNT_CODES } from '../../common/constants/default-accounts';
+
+interface PolicyLibraryRow {
+  category: PolicyCategory;
+  code: string | null;
+  title: string;
+  description: string | null;
+}
 
 interface ChartAccountRow {
   code: string;
@@ -100,11 +108,27 @@ async function importChartOfAccounts(): Promise<Map<string, string>> {
   return codeToId;
 }
 
+/** يستورد فهرس دليل السياسات المحاسبية ودليل الإجراءات والنماذج المعتمدة (بيانات وصفية فقط). */
+async function importPolicyLibrary(): Promise<void> {
+  const repo = AppDataSource.getRepository(PolicyDocument);
+  const existing = await repo.count();
+  if (existing > 0) {
+    console.log(`  policy library already has ${existing} rows, skipping import`);
+    return;
+  }
+
+  const dataPath = path.join(__dirname, 'data', 'policy-library.json');
+  const rows: PolicyLibraryRow[] = JSON.parse(fs.readFileSync(dataPath, 'utf-8'));
+  await repo.insert(rows.map((r) => repo.create(r)));
+  console.log(`  imported ${rows.length} entries into the policy/procedures/standards library`);
+}
+
 async function seed() {
   await AppDataSource.initialize();
   console.log('Connected to database, seeding...');
 
   const codeToId = await importChartOfAccounts();
+  await importPolicyLibrary();
   const accountId = (code: string): string => {
     const id = codeToId.get(code);
     if (!id) {

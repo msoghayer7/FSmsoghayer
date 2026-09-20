@@ -12,11 +12,29 @@ import { TrialBalanceService } from './trial-balance.service';
 import { TrialBalanceController } from './trial-balance.controller';
 import { FiscalYearsService } from './fiscal-years.service';
 import { FiscalYearsController } from './fiscal-years.controller';
+import { AccountStatementService } from './account-statement.service';
+import { AccountStatementController } from './account-statement.controller';
+import { ReportsExportService } from './reports-export.service';
+import { JournalEntriesImportService } from './journal-entries-import.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Account, JournalEntry, JournalEntryLine, FiscalYear])],
-  providers: [AccountsService, JournalEntriesService, TrialBalanceService, FiscalYearsService],
-  controllers: [AccountsController, JournalEntriesController, TrialBalanceController, FiscalYearsController],
-  exports: [TypeOrmModule, AccountsService, JournalEntriesService, FiscalYearsService],
+  providers: [
+    AccountsService,
+    JournalEntriesService,
+    TrialBalanceService,
+    FiscalYearsService,
+    AccountStatementService,
+    ReportsExportService,
+    JournalEntriesImportService,
+  ],
+  controllers: [
+    AccountsController,
+    JournalEntriesController,
+    TrialBalanceController,
+    FiscalYearsController,
+    AccountStatementController,
+  ],
+  exports: [TypeOrmModule, AccountsService, JournalEntriesService, FiscalYearsService, AccountStatementService],
 })
 export class AccountingModule {}
