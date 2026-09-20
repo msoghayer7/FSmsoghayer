@@ -6,6 +6,7 @@ import { UsersModule } from '../users/users.module';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
+import { getRequiredJwtSecret } from '../config/jwt-secret.util';
 
 @Module({
   imports: [
@@ -16,7 +17,7 @@ import { JwtStrategy } from './jwt.strategy';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET', 'change-this-secret-in-production'),
+        secret: getRequiredJwtSecret(config),
         signOptions: { expiresIn: config.get<string>('JWT_EXPIRES_IN', '8h') },
       }),
     }),
