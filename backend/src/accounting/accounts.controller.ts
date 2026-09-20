@@ -26,6 +26,8 @@ export class AccountsController {
     return this.service.findOne(id);
   }
 
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.FINANCE_MANAGER)
   @Post()
   create(@Body() body: Partial<Account>) {
     return this.service.create(body);

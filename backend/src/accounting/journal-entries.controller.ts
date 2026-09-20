@@ -53,6 +53,8 @@ export class JournalEntriesController {
   }
 
   /** ينشئ قيدًا يدويًا بحالة "مسودة" — لا يُرحّل إلا بعد اعتماده عبر /journal-entries/:id/approve */
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.FINANCE_MANAGER, UserRole.ACCOUNTANT)
   @Post('manual')
   createManual(@Body() dto: CreateManualJournalEntryDto, @CurrentUser() user: { userId: string }) {
     return this.service.create({
