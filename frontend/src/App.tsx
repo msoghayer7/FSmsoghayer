@@ -17,6 +17,7 @@ import AccountsPage from './pages/accounting/AccountsPage';
 import JournalEntriesPage from './pages/accounting/JournalEntriesPage';
 import JournalEntryDetail from './pages/accounting/JournalEntryDetail';
 import TrialBalancePage from './pages/accounting/TrialBalancePage';
+import FiscalYearsPage from './pages/accounting/FiscalYearsPage';
 
 function RequireAuth({ children }: { children: React.ReactElement }) {
   const { user } = useAuth();
@@ -53,6 +54,7 @@ export default function App() {
         <Route path="journal-entries" element={<JournalEntriesPage />} />
         <Route path="journal-entries/:id" element={<JournalEntryDetail />} />
         <Route path="trial-balance" element={<TrialBalancePage />} />
+        <Route path="fiscal-years" element={<FiscalYearsPage />} />
       </Route>
     </Routes>
   );

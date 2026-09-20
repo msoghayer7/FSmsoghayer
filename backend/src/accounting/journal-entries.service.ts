@@ -4,9 +4,10 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Repository } from 'typeorm';
 import { JournalEntry } from './entities/journal-entry.entity';
 import { JournalEntryLine } from './entities/journal-entry-line.entity';
-import { JournalEntryStatus } from '../common/enums';
+import { FiscalYearStatus, JournalEntryStatus } from '../common/enums';
 import { generateDocumentNumber } from '../common/utils/document-number.util';
 import { CreateJournalEntryInput } from './dto/journal-entry.dto';
+import { FiscalYearsService } from './fiscal-years.service';
 
 export const JOURNAL_ENTRY_POSTED_EVENT = 'journal-entry.posted';
 
@@ -32,6 +33,7 @@ export class JournalEntriesService {
     @InjectRepository(JournalEntry) private readonly entryRepo: Repository<JournalEntry>,
     @InjectRepository(JournalEntryLine) private readonly lineRepo: Repository<JournalEntryLine>,
     private readonly events: EventEmitter2,
+    private readonly fiscalYears: FiscalYearsService,
   ) {}
 
   findAll(status?: JournalEntryStatus): Promise<JournalEntry[]> {
@@ -50,9 +52,10 @@ export class JournalEntriesService {
     return entry;
   }
 
-  /** Creates a balanced entry in DRAFT status. Throws if debits != credits. */
+  /** Creates a balanced entry in DRAFT status. Throws if debits != credits or the date falls in a closed/undefined fiscal year. */
   async create(input: CreateJournalEntryInput): Promise<JournalEntry> {
     this.assertBalanced(input);
+    await this.assertFiscalYearOpen(input.entryDate);
 
     const entry = this.entryRepo.create({
       entryNumber: generateDocumentNumber('JE'),
@@ -81,6 +84,7 @@ export class JournalEntriesService {
     if (entry.status !== JournalEntryStatus.DRAFT) {
       throw new BadRequestException(`Journal entry ${entry.entryNumber} is already ${entry.status}`);
     }
+    await this.assertFiscalYearOpen(entry.entryDate);
 
     const totalDebit = entry.lines.reduce((sum, l) => sum + Number(l.debit), 0);
     const totalCredit = entry.lines.reduce((sum, l) => sum + Number(l.credit), 0);
@@ -100,6 +104,16 @@ export class JournalEntriesService {
     } as JournalEntryPostedPayload);
 
     return saved;
+  }
+
+  private async assertFiscalYearOpen(entryDate: string): Promise<void> {
+    const year = await this.fiscalYears.findYearForDate(entryDate);
+    if (!year) {
+      throw new BadRequestException(`لا توجد سنة مالية مُعرَّفة تغطي تاريخ ${entryDate}`);
+    }
+    if (year.status === FiscalYearStatus.CLOSED) {
+      throw new BadRequestException(`السنة المالية ${year.yearNumber} مقفلة، لا يمكن إنشاء أو اعتماد قيود ضمنها`);
+    }
   }
 
   private assertBalanced(input: CreateJournalEntryInput): void {

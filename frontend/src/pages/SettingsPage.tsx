@@ -3,11 +3,6 @@ import { apiClient, apiErrorMessage } from '../api/client';
 import type { EntityProfile } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 
-const MONTHS = [
-  'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-  'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
-];
-
 export default function SettingsPage() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<EntityProfile | null>(null);
@@ -31,8 +26,6 @@ export default function SettingsPage() {
       const { data } = await apiClient.patch<EntityProfile>('/entity-profile', {
         entityName: profile.entityName,
         entityNumber: profile.entityNumber,
-        fiscalYearStartMonth: profile.fiscalYearStartMonth,
-        currency: profile.currency,
         address: profile.address,
       });
       setProfile(data);
@@ -70,26 +63,8 @@ export default function SettingsPage() {
             />
           </label>
           <label>
-            بداية السنة المالية
-            <select
-              value={profile.fiscalYearStartMonth}
-              disabled={!canEdit}
-              onChange={(e) => setProfile({ ...profile, fiscalYearStartMonth: Number(e.target.value) })}
-            >
-              {MONTHS.map((m, idx) => (
-                <option key={m} value={idx + 1}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
             العملة
-            <input
-              value={profile.currency}
-              disabled={!canEdit}
-              onChange={(e) => setProfile({ ...profile, currency: e.target.value })}
-            />
+            <input value="ريال سعودي (SAR)" disabled />
           </label>
         </div>
         <label>

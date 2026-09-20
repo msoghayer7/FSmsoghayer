@@ -65,6 +65,18 @@ export interface EntityProfile {
   address?: string | null;
 }
 
+export type FiscalYearStatus = 'OPEN' | 'CLOSED';
+
+export interface FiscalYear {
+  id: string;
+  yearNumber: number;
+  startDate: string;
+  endDate: string;
+  status: FiscalYearStatus;
+  closedAt?: string | null;
+  closedBy?: string | null;
+}
+
 export interface Department {
   id: string;
   code: string;

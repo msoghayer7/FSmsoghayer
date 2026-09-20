@@ -1,6 +1,6 @@
 import { Column, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
-/** سجل واحد فقط يحمل بيانات المنشأة العامة (اسم الجهة، السنة المالية...). */
+/** سجل واحد فقط يحمل بيانات المنشأة العامة (اسم الجهة، العنوان...). السنوات المالية تُدار عبر fiscal_years. */
 @Entity('entity_profile')
 export class EntityProfile {
   @PrimaryGeneratedColumn('uuid')
@@ -12,10 +12,7 @@ export class EntityProfile {
   @Column({ nullable: true })
   entityNumber?: string;
 
-  /** الشهر الذي تبدأ به السنة المالية (1 = يناير). */
-  @Column({ default: 1 })
-  fiscalYearStartMonth: number;
-
+  /** عملة النظام ثابتة: الريال السعودي. */
   @Column({ default: 'SAR' })
   currency: string;
 

@@ -130,10 +130,6 @@ export default function ContractForm() {
             <input type="number" step="0.01" required value={form.totalValue} onChange={(e) => update('totalValue', e.target.value)} />
           </label>
           <label>
-            العملة
-            <input value={form.currency} onChange={(e) => update('currency', e.target.value)} />
-          </label>
-          <label>
             الإدارة/القسم
             <select value={form.departmentId} onChange={(e) => update('departmentId', e.target.value)}>
               <option value="">بدون</option>

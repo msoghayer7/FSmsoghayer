@@ -30,6 +30,11 @@ export enum JournalEntryStatus {
   POSTED = 'POSTED',
 }
 
+export enum FiscalYearStatus {
+  OPEN = 'OPEN',
+  CLOSED = 'CLOSED',
+}
+
 export enum JournalSourceType {
   MANUAL = 'MANUAL',
   MANUAL_IMPORT = 'MANUAL_IMPORT',

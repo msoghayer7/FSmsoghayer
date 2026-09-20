@@ -1,5 +1,5 @@
-const POSITIVE = new Set(['ACTIVE', 'RENEWED', 'POSTED', 'APPROVED']);
-const NEGATIVE = new Set(['TERMINATED', 'EXPIRED', 'CANCELLED', 'DISPOSED']);
+const POSITIVE = new Set(['ACTIVE', 'RENEWED', 'POSTED', 'APPROVED', 'OPEN']);
+const NEGATIVE = new Set(['TERMINATED', 'EXPIRED', 'CANCELLED', 'DISPOSED', 'CLOSED']);
 
 export function StatusBadge({ label, status }: { label: string; status: string }) {
   const tone = POSITIVE.has(status) ? 'success' : NEGATIVE.has(status) ? 'danger' : 'neutral';

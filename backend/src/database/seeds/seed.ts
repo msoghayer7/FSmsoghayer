@@ -4,6 +4,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { AppDataSource } from '../../config/data-source';
 import { Account } from '../../accounting/entities/account.entity';
+import { FiscalYear } from '../../accounting/entities/fiscal-year.entity';
+import { FIRST_FISCAL_YEAR } from '../../accounting/fiscal-years.service';
 import { User } from '../../users/user.entity';
 import { Department } from '../../organization/entities/department.entity';
 import { BusinessPartner } from '../../organization/entities/business-partner.entity';
@@ -136,6 +138,19 @@ async function seed() {
   if (!it) {
     it = await deptRepo.save(deptRepo.create({ code: 'IT', name: 'تقنية المعلومات' }));
     console.log('  created department IT');
+  }
+
+  const fiscalYearRepo = AppDataSource.getRepository(FiscalYear);
+  const firstYear = await fiscalYearRepo.findOneBy({ yearNumber: FIRST_FISCAL_YEAR });
+  if (!firstYear) {
+    await fiscalYearRepo.save(
+      fiscalYearRepo.create({
+        yearNumber: FIRST_FISCAL_YEAR,
+        startDate: `${FIRST_FISCAL_YEAR}-01-01`,
+        endDate: `${FIRST_FISCAL_YEAR}-12-31`,
+      }),
+    );
+    console.log(`  created fiscal year ${FIRST_FISCAL_YEAR} (open)`);
   }
 
   const partnerRepo = AppDataSource.getRepository(BusinessPartner);

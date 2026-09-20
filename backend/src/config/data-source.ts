@@ -6,6 +6,8 @@ import { BusinessPartner } from '../organization/entities/business-partner.entit
 import { Account } from '../accounting/entities/account.entity';
 import { JournalEntry } from '../accounting/entities/journal-entry.entity';
 import { JournalEntryLine } from '../accounting/entities/journal-entry-line.entity';
+import { FiscalYear } from '../accounting/entities/fiscal-year.entity';
+import { EntityProfile } from '../organization/entities/entity-profile.entity';
 import { Contract } from '../contracts/entities/contract.entity';
 import { ContractLine } from '../contracts/entities/contract-line.entity';
 import { Expense } from '../expenses/entities/expense.entity';
@@ -29,6 +31,8 @@ export const AppDataSource = new DataSource({
     Account,
     JournalEntry,
     JournalEntryLine,
+    FiscalYear,
+    EntityProfile,
     Contract,
     ContractLine,
     Expense,
