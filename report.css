@@ -82,7 +82,7 @@
 .f-tbl tbody tr:nth-child(even) td { background: #fafaf7; }
 .f-tbl .num { font-variant-numeric: tabular-nums; text-align: center; white-space: nowrap; }
 .f-tbl.log td { vertical-align: top; }
-.f-tbl.log td:nth-child(3) { white-space: nowrap; }
+.f-tbl.log td:nth-child(3), .f-tbl.log td:nth-child(4) { white-space: nowrap; }
 .t-formal .st { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .t-formal .st i { width: 8px; height: 8px; display: inline-block; }
 .f-stats { display: grid; grid-template-columns: repeat(6, 1fr); border: .75px solid var(--rule); margin: 4px 0 4px; }
@@ -325,6 +325,8 @@
 .t-modern .bars { display: flex; flex-direction: column; gap: 6px; }
 .t-modern .bars div { display: grid; grid-template-columns: 70px 1fr 22px; gap: 6px; align-items: center; font-size: 10px; }
 .t-modern .bars i { height: 8px; border-radius: 4px; display: block; }
+.t-modern .tchips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.t-modern .tchips span { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
 .t-modern .bars b { font-family: Tajawal; font-weight: 700; text-align: left; }
 .m-row3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
 .m-row3 ul { list-style: none; }

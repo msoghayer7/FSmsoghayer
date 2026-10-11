@@ -7,8 +7,8 @@
    ===================================================================== */
 (() => {
   const SC = { open: "#2a78d6", progress: "#eda100", hold: "#6250d6", closed: "#1baf7a" };
-  const EC = { create: "#0f172a", update: "#2a78d6", followup: "#1baf7a", meeting: "#6250d6", letter: "#3f7fbf", inspection: "#0f766e", action: "#eb6834",
-    decision: "#d55181", status: "#64748b", close: "#1baf7a", reopen: "#e34948", now: "#e34948" };
+  // colour = event type; icon = event tool (when set)
+  const EC = { create: "#0f172a", update: "#2a78d6", followup: "#1baf7a", action: "#eb6834", status: "#64748b", close: "#1baf7a", reopen: "#e34948", now: "#e34948" };
   const RED = "#e34948";
   const colors = S => S.customColors ? { p: S.primary, a: S.accent } : { p: "#1b9bd7", a: "#066d39" };
 
@@ -115,9 +115,9 @@
         <span class="line" style="right:${100 / PER / 2}%;left:${(PER - chunk.length) / PER * 100 + 100 / PER / 2}%"></span>
         ${chunk.map((e, j) => {
           const now = e.type === "now", c = EC[e.type] || SC.open, nx = evs[from + j + 1];
-          return `<div class="st" style="--c:${c}"><div class="n ${now ? "now" : ""}">${icon(now ? "clock" : e.type, 18, now ? RED : "#fff")}</div>
+          return `<div class="st" style="--c:${c}"><div class="n ${now ? "now" : ""}">${icon(now ? "clock" : evIcon(e), 18, now ? RED : "#fff")}</div>
             ${nx && j < chunk.length - 1 ? `<span class="gp">${dur(daysBetween(e.date, nx.date))}</span>` : ""}
-            <div class="c"><div class="d">${fmtShort(e.date)} <small>${e.date.slice(0, 4)}</small></div><div class="ty">${now ? "الوضع الحالي" : EVT[e.type].ar}</div>
+            <div class="c"><div class="d">${fmtShort(e.date)} <small>${e.date.slice(0, 4)}</small></div><div class="ty">${now ? "الوضع الحالي" : evLabel(e)}</div>
             <p>${esc(clip(e.text, now ? 120 : 170))}</p>${e.by ? `<div class="by">${esc(e.by)}</div>` : ""}</div></div>`;
         }).join("")}</div></div>`);
   }
@@ -153,11 +153,12 @@
     if (rk.length) extras.push(`<div class="card"><h3>${icon("alert", 16, RED)} المخاطر</h3><ul class="r">${rk.slice(0, 5).map(x => `<li>${esc(clip(x, 90))}</li>`).join("")}</ul></div>`);
     if (dc) extras.push(`<div class="card dark"><h3>القرار المطلوب</h3><p>${esc(clip(dc, 220))}</p></div>`);
     if (!extras.length) {
-      const types = {};
-      realEvents(t).forEach(e => types[e.type] = (types[e.type] || 0) + 1);
+      const types = {}, tools = {};
+      realEvents(t).forEach(e => { types[e.type] = (types[e.type] || 0) + 1; if (e.tool && TOOLS[e.tool]) tools[e.tool] = (tools[e.tool] || 0) + 1; });
       const mx = Math.max(1, ...Object.values(types));
-      extras.push(`<div class="card"><h3>أنواع الإجراءات</h3><div class="bars">
-        ${Object.entries(types).map(([k, n]) => `<div><span>${EVT[k].ar}</span><i style="width:${n / mx * 100}%;background:${EC[k]}"></i><b>${n}</b></div>`).join("") || `<p class="mut">لا إجراءات بعد.</p>`}</div></div>`);
+      extras.push(`<div class="card"><h3>الأحداث حسب النوع والأداة</h3><div class="bars">
+        ${Object.entries(types).map(([k, n]) => `<div><span>${(EVT[k] || EVT.update).ar}</span><i style="width:${n / mx * 100}%;background:${EC[k]}"></i><b>${n}</b></div>`).join("") || `<p class="mut">لا إجراءات بعد.</p>`}</div>
+        ${Object.keys(tools).length ? `<div class="tchips">${Object.entries(tools).map(([k, n]) => `<span>${icon(k, 12, "#475569", 2)}${TOOLS[k].ar} <b>${n}</b></span>`).join("")}</div>` : ""}</div>`);
     }
     const ex = extras.slice(0, 3), narrow = ex.length > 1;
     out.push(h(`<div class="m-row2 ${ex.length > 1 ? "x" + (ex.length + 1) : ""}">

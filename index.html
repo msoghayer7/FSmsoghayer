@@ -138,6 +138,7 @@
   .ev .d { font-weight: 700; font-family: Consolas, monospace; }
   .ev .t { font-size: 12px; font-weight: 600; color: var(--c, var(--brand)); border: 1px solid currentColor; border-radius: 999px; padding: 0 8px; }
   .ev .by { color: var(--muted); font-size: 13px; }
+  .ev .tool { font-size: 12px; background: #f1f5f9; border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; }
   .ev .x { white-space: pre-wrap; margin-top: 2px; }
   .ev .gap { color: var(--muted); font-size: 12px; }
   .ev .tools { margin-inline-start: auto; display: flex; gap: 4px; }
@@ -246,6 +247,7 @@
             <div class="field"><label>التاريخ</label><input type="date" name="date" required></div>
             <div class="field"><label>نوع الحدث</label><select name="type" id="evType"></select></div>
           </div>
+          <div class="field"><label>أداة الحدث</label><select name="tool" id="evTool"></select></div>
           <div class="field"><label>ما تم</label><textarea name="text" required placeholder="وصف الإجراء أو التحديث…"></textarea></div>
           <div class="field"><label>بواسطة / الجهة (اختياري)</label><input name="by"></div>
           <div class="dlg-actions">
@@ -301,6 +303,7 @@
     <h3>إقفال الموضوع</h3>
     <div class="field"><label>تاريخ الإقفال *</label><input type="date" name="date" required></div>
     <div class="field"><label>ملخص الإقفال / النتيجة *</label><textarea name="text" required></textarea></div>
+    <div class="field"><label>أداة الإقفال</label><select name="tool" id="closeTool"></select></div>
     <div class="field"><label>بواسطة (اختياري)</label><input name="by"></div>
     <div class="dlg-actions">
       <button type="button" class="btn" data-close>إلغاء</button>
@@ -421,20 +424,42 @@ const CATEGORY_PRESETS = ["التراخيص والتصاريح", "التفتيش
   "الأمن النووي", "الضمانات", "التأهب والاستجابة للطوارئ", "النفايات المشعة", "الأنظمة واللوائح", "التعاون الدولي", "الشؤون الإدارية والمالية"];
 const PRIORITY = { high: "عالية", medium: "متوسطة", low: "منخفضة" };
 
-// event types; `manual` = selectable in the event form
+// event types (what kind of step it is); `manual` = selectable in the event form
 const EVT = {
-  create:   { ar: "فتح الموضوع",  color: "#1f4e79" },
-  update:   { ar: "تحديث",        color: "#2563eb", manual: true },
-  followup: { ar: "متابعة",       color: "#0891b2", manual: true },
-  meeting:  { ar: "اجتماع",       color: "#9333ea", manual: true },
-  letter:   { ar: "مراسلة",       color: "#64748b", manual: true },
-  inspection: { ar: "تفتيش / زيارة ميدانية", color: "#0f766e", manual: true },
-  action:   { ar: "إجراء",        color: "#d97706", manual: true },
-  decision: { ar: "قرار",         color: "#be185d", manual: true },
-  status:   { ar: "تغيير حالة",   color: "#7c3aed" },
-  close:    { ar: "إقفال",        color: "#15803d" },
-  reopen:   { ar: "إعادة فتح",    color: "#dc2626" },
+  create:   { ar: "فتح الموضوع", color: "#1f4e79" },
+  update:   { ar: "تحديث",       color: "#2563eb", manual: true },
+  followup: { ar: "متابعة",      color: "#0891b2", manual: true },
+  action:   { ar: "إجراء",       color: "#d97706", manual: true },
+  status:   { ar: "تغيير حالة",  color: "#7c3aed" },
+  close:    { ar: "إقفال",       color: "#15803d" },
+  reopen:   { ar: "إعادة فتح",   color: "#dc2626" },
 };
+// event tool (how it was done) – optional
+const TOOLS = {
+  letter:   { ar: "خطاب",           emoji: "📄" },
+  email:    { ar: "بريد إلكتروني",   emoji: "✉️" },
+  phone:    { ar: "اتصال هاتفي",     emoji: "📞" },
+  meeting:  { ar: "اجتماع",          emoji: "👥" },
+  decision: { ar: "قرار",            emoji: "⚖️" },
+  visit:    { ar: "زيارة ميدانية",    emoji: "📋" },
+  other:    { ar: "أخرى",            emoji: "•" },
+};
+const evTypeAr = e => (EVT[e.type] || EVT.update).ar;
+const evLabel = e => (EVT[e.type] || EVT.update).ar + (e.tool && TOOLS[e.tool] ? " · " + TOOLS[e.tool].ar : "");
+const evColor = e => (EVT[e.type] || EVT.update).color;
+
+/* earlier versions stored the tool as the event type */
+const LEGACY_TYPES = { letter: ["followup", "letter"], meeting: ["action", "meeting"], decision: ["action", "decision"], inspection: ["action", "visit"] };
+function migrateTopics(topics) {
+  topics.forEach(t => { if (!PRIORITY[t.priority]) t.priority = "medium"; if (!t.events) t.events = []; });
+  topics.forEach(t => (t.events || []).forEach(e => {
+    const m = LEGACY_TYPES[e.type];
+    if (m) { e.type = m[0]; if (!e.tool) e.tool = m[1]; }
+    if (!EVT[e.type]) e.type = "update";
+    if (e.tool === undefined) e.tool = "";
+  }));
+  return topics;
+}
 
 /* ================= helpers ================= */
 const $ = (s, el = document) => el.querySelector(s);
@@ -473,7 +498,7 @@ function load() {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) {
       const d = JSON.parse(raw);
-      if (d && Array.isArray(d.topics)) return { seq: d.seq || d.topics.length, topics: d.topics, settings: d.settings || {} };
+      if (d && Array.isArray(d.topics)) return { seq: d.seq || d.topics.length, topics: migrateTopics(d.topics), settings: d.settings || {} };
     }
   } catch (e) { console.warn(e); }
   return { seq: 0, topics: [], settings: {} };
@@ -497,7 +522,7 @@ function ageDays(t) { return Math.max(0, daysBetween(t.openDate, endDate(t))); }
 
 function addEvent(t, ev) {
   t.evSeq = (t.evSeq || 0) + 1;
-  t.events.push({ id: uid(), seq: t.evSeq, by: "", ...ev });
+  t.events.push({ id: uid(), seq: t.evSeq, by: "", tool: "", ...ev });
 }
 
 function createTopic(data) {
@@ -541,7 +566,7 @@ function filteredTopics() {
     if (STATUS[st] && t.status !== st) return false;
     if (cat && t.category !== cat) return false;
     if (q) {
-      const hay = [t.ref, t.title, t.description, t.owner, t.party, t.category, ...t.events.map(e => e.text + " " + e.by)].join(" ").toLowerCase();
+      const hay = [t.ref, t.title, t.description, t.owner, t.party, t.category, ...t.events.map(e => e.text + " " + e.by + " " + evLabel(e))].join(" ").toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -625,7 +650,7 @@ function renderList() {
         <span>⏱ ${ageDays(t)} يوم</span>
         <span>📌 ${t.events.length} حدث</span>
       </div>
-      ${le ? `<div class="last"><b>آخر مستجد (${fmt(le.date)} – ${EVT[le.type].ar}):</b> ${esc(le.text.length > 160 ? le.text.slice(0, 160) + "…" : le.text)}</div>` : ""}
+      ${le ? `<div class="last"><b>آخر مستجد (${fmt(le.date)} – ${evLabel(le)}):</b> ${esc(le.text.length > 160 ? le.text.slice(0, 160) + "…" : le.text)}</div>` : ""}
     </div>`;
   }).join("");
 }
@@ -639,8 +664,9 @@ function timelineHTML(t, withTools) {
     const tools = withTools ? `<span class="tools">
         <button title="تعديل" onclick="editEvent('${e.id}')">✎</button>
         ${e.type !== "create" ? `<button title="حذف" onclick="deleteEvent('${e.id}')">🗑</button>` : ""}</span>` : "";
-    return `<div class="ev" style="--c:${EVT[e.type].color}">
-      <div class="h"><span class="d">${fmt(e.date)}</span><span class="t">${EVT[e.type].ar}</span>
+    return `<div class="ev" style="--c:${evColor(e)}">
+      <div class="h"><span class="d">${fmt(e.date)}</span><span class="t">${evTypeAr(e)}</span>
+        ${e.tool && TOOLS[e.tool] ? `<span class="tool">${TOOLS[e.tool].emoji} ${TOOLS[e.tool].ar}</span>` : ""}
         ${e.by ? `<span class="by">${esc(e.by)}</span>` : ""}
         ${gap !== null ? `<span class="gap">(+${gap} يوم)</span>` : ""}${tools}</div>
       <div class="x">${esc(e.text)}</div>
@@ -685,6 +711,7 @@ function resetEventForm() {
   f.reset();
   f.date.value = todayISO();
   $("#evType").innerHTML = Object.entries(EVT).filter(([, v]) => v.manual).map(([k, v]) => `<option value="${k}">${v.ar}</option>`).join("");
+  $("#evTool").innerHTML = `<option value="">— بدون —</option>` + Object.entries(TOOLS).map(([k, v]) => `<option value="${k}">${v.emoji} ${v.ar}</option>`).join("");
   $("#eventFormTitle").textContent = "تسجيل حدث / تحديث";
   $("#btnEvSave").textContent = "إضافة للمخطط الزمني";
   $("#btnEvCancel").classList.add("hidden");
@@ -696,8 +723,8 @@ function editEvent(id) {
   const f = $("#eventForm");
   // system event types are kept as-is, only manual types are switchable
   $("#evType").innerHTML = Object.entries(EVT).filter(([k, v]) => v.manual || k === e.type).map(([k, v]) => `<option value="${k}">${v.ar}</option>`).join("");
-  f.date.value = e.date; f.type.value = e.type; f.text.value = e.text; f.by.value = e.by || "";
-  f.type.disabled = !EVT[e.type].manual;
+  f.date.value = e.date; f.type.value = e.type; f.tool.value = e.tool || ""; f.text.value = e.text; f.by.value = e.by || "";
+  f.type.disabled = !(EVT[e.type] || {}).manual;
   $("#eventFormTitle").textContent = "تعديل حدث";
   $("#btnEvSave").textContent = "حفظ التعديل";
   $("#btnEvCancel").classList.remove("hidden");
@@ -718,7 +745,7 @@ function deleteEvent(id) {
 $("#eventForm").addEventListener("submit", ev => {
   ev.preventDefault();
   const f = ev.target, t = getTopic(ui.current);
-  const data = { date: f.date.value, type: f.type.value, text: f.text.value.trim(), by: f.by.value.trim() };
+  const data = { date: f.date.value, type: f.type.value, tool: f.tool.value, text: f.text.value.trim(), by: f.by.value.trim() };
   if (!data.text) return;
   if (ui.editingEvent) {
     const e = t.events.find(x => x.id === ui.editingEvent);
@@ -784,6 +811,7 @@ document.querySelectorAll("dialog [data-close]").forEach(b => b.onclick = () => 
 /* ================= close / reopen / delete ================= */
 function openCloseDialog() {
   const f = $("#closeForm"); f.reset(); f.date.value = todayISO();
+  $("#closeTool").innerHTML = `<option value="">— بدون —</option>` + Object.entries(TOOLS).map(([k, v]) => `<option value="${k}">${v.emoji} ${v.ar}</option>`).join("");
   $("#dlgClose").showModal(); f.text.focus();
 }
 
@@ -792,7 +820,7 @@ $("#closeForm").addEventListener("submit", ev => {
   const f = ev.target, t = getTopic(ui.current);
   if (f.date.value < t.openDate) { ev.preventDefault(); alert("تاريخ الإقفال يسبق تاريخ الفتح."); return; }
   t.status = "closed"; t.closeDate = f.date.value; t.closeNote = f.text.value.trim();
-  addEvent(t, { date: t.closeDate, type: "close", text: t.closeNote, by: f.by.value.trim() });
+  addEvent(t, { date: t.closeDate, type: "close", text: t.closeNote, by: f.by.value.trim(), tool: f.tool.value });
   save(); resetEventForm(); renderDetail(); toast("تم إقفال الموضوع");
 });
 
@@ -849,7 +877,7 @@ $("#fileRestore").onchange = async e => {
     const d = JSON.parse(await file.text());
     if (!d || !Array.isArray(d.topics)) throw new Error("ملف غير صالح");
     if (!confirm(`استعادة ${d.topics.length} موضوع؟ سيتم استبدال البيانات الحالية.`)) return;
-    db = { seq: d.seq || d.topics.length, topics: d.topics, settings: d.settings || db.settings || {} };
+    db = { seq: d.seq || d.topics.length, topics: migrateTopics(d.topics), settings: d.settings || db.settings || {} };
     save(); showList(); toast("تمت الاستعادة");
   } catch (err) { alert("تعذرت الاستعادة: " + err.message); }
 };
@@ -922,18 +950,18 @@ async function exportExcel(topics) {
 
   /* ---- sheet 2: timeline log ---- */
   const s2 = wb.addWorksheet("السجل الزمني", { views: [{ rightToLeft: true, state: "frozen", ySplit: 3 }] });
-  const h2 = ["المرجع", "الموضوع", "التاريخ", "نوع الحدث", "ما تم", "بواسطة", "اليوم من الفتح", "الفاصل عن الحدث السابق (يوم)"];
+  const h2 = ["المرجع", "الموضوع", "التاريخ", "نوع الحدث", "أداة الحدث", "ما تم", "بواسطة", "اليوم من الفتح", "الفاصل عن الحدث السابق (يوم)"];
   addTitle(s2, "السجل الزمني للأحداث", h2.length);
   styleHeader(s2.addRow(h2));
-  [9, 30, 13, 13, 70, 18, 12, 14].forEach((w, i) => s2.getColumn(i + 1).width = w);
+  [9, 30, 13, 11, 15, 66, 18, 12, 14].forEach((w, i) => s2.getColumn(i + 1).width = w);
   topics.forEach((t, ti) => {
     const evs = sortedEvents(t);
     const band = ti % 2 ? "FFF6F8FB" : "FFFFFFFF";
     evs.forEach((e, i) => {
-      const r = s2.addRow([t.ref, t.title, dateObj(e.date), EVT[e.type].ar, e.text, e.by,
+      const r = s2.addRow([t.ref, t.title, dateObj(e.date), evTypeAr(e), e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : "", e.text, e.by,
         daysBetween(t.openDate, e.date), i ? daysBetween(evs[i - 1].date, e.date) : null]);
       r.eachCell({ includeEmpty: true }, c => { c.border = XL.border; c.fill = XL.fill(band); c.alignment = { vertical: "top", wrapText: true, horizontal: "right" }; });
-      r.getCell(4).font = { bold: true, color: { argb: XL.hex(EVT[e.type].color) } };
+      r.getCell(4).font = { bold: true, color: { argb: XL.hex(evColor(e)) } };
     });
   });
   s2.getColumn(3).numFmt = "yyyy/mm/dd";
@@ -1018,9 +1046,9 @@ function buildGanttSheet(wb, topics) {
       const last = evs[evs.length - 1];
       const closing = evs.some(e => e.type === "close");
       c.value = closing ? "✔" : (evs.length > 1 ? String(evs.length) : "●");
-      c.font = { bold: true, color: { argb: closing ? "FF15803D" : XL.hex(EVT[last.type].color) } };
+      c.font = { bold: true, color: { argb: closing ? "FF15803D" : XL.hex(evColor(last)) } };
       c.alignment = { horizontal: "center", vertical: "middle" };
-      c.note = evs.map(e => `${fmt(e.date)} – ${EVT[e.type].ar}${e.by ? " (" + e.by + ")" : ""}\n${e.text}`).join("\n\n");
+      c.note = evs.map(e => `${fmt(e.date)} – ${evLabel(e)}${e.by ? " (" + e.by + ")" : ""}\n${e.text}`).join("\n\n");
     });
   });
 }
@@ -1031,7 +1059,7 @@ function loadDemo() {
   const d = n => isoFromUTC(toUTC(todayISO()) + n * 86400000);
   const mk = (data, evs, close) => {
     const t = createTopic(data);
-    evs.forEach(([o, type, text, by]) => addEvent(t, { date: d(o), type, text, by: by || "" }));
+    evs.forEach(([o, type, text, by, tool]) => addEvent(t, { date: d(o), type, text, by: by || "", tool: tool || "" }));
     if (close) { t.status = "closed"; t.closeDate = d(close[0]); t.closeNote = close[1]; addEvent(t, { date: t.closeDate, type: "close", text: close[1] }); }
     else if (evs.length) t.status = "progress";
     return t;
@@ -1044,13 +1072,13 @@ function loadDemo() {
      [[-35, "letter", "إرسال خطاب للجهة بطلب استيفاء متطلبات الدروع وخطة الوقاية الإشعاعية", "أحمد العتيبي"],
       [-26, "inspection", "زيارة ميدانية للتحقق من غرفة العلاج وأنظمة الدروع؛ رُصدت 3 ملاحظات", "فريق التفتيش"],
       [-15, "meeting", "اجتماع مع الجهة لمناقشة خطة معالجة الملاحظات وجدولها الزمني", "إدارة التراخيص"],
-      [-6, "followup", "متابعة تنفيذ تعديلات الدروع – بانتظار تقرير القياس من الجهة", "أحمد العتيبي"]]);
+      [-6, "followup", "متابعة تنفيذ تعديلات الدروع – بانتظار تقرير القياس من الجهة", "أحمد العتيبي", "phone"]]);
   mk({ title: "معالجة ملاحظات التفتيش الدوري على منشأة صناعية", category: "التفتيش والرقابة", party: "منشأة صناعية مرخَّص لها", owner: "سارة القحطاني", priority: "medium", openDate: d(-60), dueDate: d(-10) },
      [[-57, "inspection", "تفتيش دوري ورصد 5 ملاحظات على حفظ المصادر وسجلات الجرعات"], [-50, "letter", "إبلاغ المنشأة بالملاحظات ومهلة المعالجة"],
-      [-33, "update", "استلام شواهد معالجة 4 ملاحظات"], [-20, "inspection", "زيارة تحقق ميدانية من المعالجة"]], [-12, "التحقق من معالجة جميع الملاحظات وإغلاقها"]);
+      [-33, "update", "استلام شواهد معالجة 4 ملاحظات", "", "email"], [-20, "inspection", "زيارة تحقق ميدانية من المعالجة"]], [-12, "التحقق من معالجة جميع الملاحظات وإغلاقها"]);
   mk({ title: "تحديث لائحة الوقاية من الإشعاع", category: "الأنظمة واللوائح", party: "الإدارة القانونية", owner: "خالد الشهري", priority: "high", openDate: d(-50), dueDate: d(6),
        nextSteps: "دراسة مرئيات الجهات ذات العلاقة\nإعداد المسودة النهائية ورفعها للاعتماد" },
-     [[-45, "meeting", "ورشة عمل داخلية لمراجعة المسودة الأولى"], [-30, "action", "طرح المسودة لأخذ مرئيات الجهات ذات العلاقة"], [-4, "update", "استلام 12 مرئية من الجهات"]]);
+     [[-45, "meeting", "ورشة عمل داخلية لمراجعة المسودة الأولى"], [-30, "action", "طرح المسودة لأخذ مرئيات الجهات ذات العلاقة"], [-4, "update", "استلام 12 مرئية من الجهات", "", "email"]]);
   const hold = mk({ title: "تنفيذ تمرين الاستجابة لحادث إشعاعي", category: "التأهب والاستجابة للطوارئ", party: "الجهات المشاركة في الخطة الوطنية", owner: "فهد الدوسري", priority: "medium", openDate: d(-52), dueDate: d(9),
        decision: "تحديد موعد بديل للتمرين ومخاطبة الجهات المشاركة" },
      [[-39, "action", "إعداد سيناريو التمرين وخطة التقييم"], [-13, "followup", "تعليق موعد التمرين بانتظار تأكيد الجهات المشاركة"]]);
@@ -1058,6 +1086,7 @@ function loadDemo() {
   mk({ title: "إعداد التقرير السنوي للضمانات", category: "الضمانات", party: "إدارة الضمانات", owner: "نورة الحربي", priority: "low", openDate: d(-8), dueDate: d(35) }, []);
   mk({ title: "تحديث السجل الوطني للمصادر المشعة", category: "الوقاية من الإشعاع", party: "إدارة الوقاية من الإشعاع", owner: "سارة القحطاني", priority: "low", openDate: d(-88), dueDate: d(-41) },
      [[-74, "action", "حصر المصادر لدى الجهات المرخَّص لها ومطابقتها مع السجل"]], [-44, "اعتماد السجل المحدّث ونشره داخلياً"]);
+  migrateTopics(db.topics);
   save(); renderList(); toast("تم تحميل بيانات تجريبية");
 }
 

@@ -49,6 +49,7 @@ const lateDays = t => {
 };
 const sinceLast = t => daysBetween((lastEvent(t) || { date: t.openDate }).date, todayISO());
 const realEvents = t => sortedEvents(t).filter(e => e.type !== "create");
+const evIcon = e => e.tool && ICONS[e.tool] ? e.tool : e.type;   // tool icon when a tool is set
 
 function stats(topics) {
   const s = { total: topics.length, open: 0, progress: 0, hold: 0, closed: 0, events: 0 };
@@ -176,8 +177,11 @@ const ICONS = {
   update:   '<path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/>',
   followup: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   meeting:  '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17 14.2c2.6.3 4.5 2.6 4.5 5.8"/>',
-  inspection: '<path d="M9 4h6v3H9z"/><path d="M9 5H6v16h12V5h-3"/><path d="m9 14 2 2 4-4"/>',
-  letter:   '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 6.5 12 13l8.5-6.5"/>',
+  visit:    '<path d="M9 4h6v3H9z"/><path d="M9 5H6v16h12V5h-3"/><path d="m9 14 2 2 4-4"/>',
+  letter:   '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 12h6M9 16h6"/>',
+  email:    '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 6.5 12 13l8.5-6.5"/>',
+  phone:    '<path d="M21 16.4v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 3.1 3.7 2 2 0 0 1 5.1 1.5h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L9 9.3a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>',
+  other:    '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
   action:   '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
   decision: '<path d="M9 3h6v5l2 3H7l2-3z"/><path d="M5 14h14v3.5H5z"/><path d="M7 21h10"/>',
   status:   '<path d="M7 4 3 8l4 4"/><path d="M3 8h14"/><path d="m17 20 4-4-4-4"/><path d="M21 16H7"/>',

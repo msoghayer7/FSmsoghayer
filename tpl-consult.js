@@ -79,7 +79,7 @@
         const i = from + j, now = e.type === "now", nx = all[i + 1];
         return `<div class="st ${now ? "now" : ""}"><div class="d">${fmtShort(e.date)}<small>${e.date.slice(0, 4)}</small></div>
           <span class="dot"></span>${nx && j < chunk.length - 1 ? `<span class="gap">${dur(daysBetween(e.date, nx.date))}</span>` : ""}
-          <div class="k">${now ? "الوضع الحالي" : EVT[e.type].ar}</div><p>${esc(clip(e.text, now ? 140 : 190))}</p>${e.by ? `<div class="by">${esc(e.by)}</div>` : ""}</div>`;
+          <div class="k">${now ? "الوضع الحالي" : evLabel(e)}</div><p>${esc(clip(e.text, now ? 140 : 190))}</p>${e.by ? `<div class="by">${esc(e.by)}</div>` : ""}</div>`;
       }).join("")}</div>`);
   }
 

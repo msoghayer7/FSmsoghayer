@@ -81,8 +81,8 @@
     const latest = topics.flatMap(t => realEvents(t).map(e => ({ t, e }))).sort((a, b) => b.e.date.localeCompare(a.e.date) || b.e.seq - a.e.seq).slice(0, dec.length ? 4 : 6);
     if (latest.length) {
       out.push(sec(n++, "أبرز المستجدات"));
-      out.push(h(`<table class="f-tbl" data-split data-cont="أبرز المستجدات"><thead class="split-head"><tr><th style="width:26px">م</th><th style="width:82px">التاريخ</th><th style="width:54px">المرجع</th><th style="width:80px">نوع الإجراء</th><th>التفاصيل</th></tr></thead>
-        <tbody class="split-body">${latest.map(({ t, e }, i) => `<tr><td class="num">${i + 1}</td><td class="num">${fmt(e.date)}</td><td class="num">${esc(t.ref)}</td><td>${EVT[e.type].ar}</td>
+      out.push(h(`<table class="f-tbl" data-split data-cont="أبرز المستجدات"><thead class="split-head"><tr><th style="width:26px">م</th><th style="width:82px">التاريخ</th><th style="width:54px">المرجع</th><th style="width:120px">النوع / الأداة</th><th>التفاصيل</th></tr></thead>
+        <tbody class="split-body">${latest.map(({ t, e }, i) => `<tr><td class="num">${i + 1}</td><td class="num">${fmt(e.date)}</td><td class="num">${esc(t.ref)}</td><td>${evLabel(e)}</td>
         <td>${esc(clip(e.text, 140))} <span class="mut">– ${esc(t.title)}</span></td></tr>`).join("")}</tbody></table>`));
     }
 
@@ -98,7 +98,7 @@
   /* ---------- numbered milestone strip with collision-free labels ---------- */
   function strip(t) {
     const evs = sortedEvents(t), today = todayISO();
-    const items = evs.map((e, i) => ({ d: e.date, n: i + 1, l1: fmt(e.date), l2: EVT[e.type].ar, kind: e.type === "close" ? "end" : "ev" }));
+    const items = evs.map((e, i) => ({ d: e.date, n: i + 1, l1: fmt(e.date), l2: e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : evTypeAr(e), kind: e.type === "close" ? "end" : "ev" }));
     if (t.dueDate) items.push({ d: t.dueDate, l1: fmt(t.dueDate), l2: "الاستحقاق", kind: "due" });
     if (t.status !== "closed") items.push({ d: today, l1: fmt(today), l2: "تاريخ التقرير", kind: "now" });
     const sc = timeScale(items.map(i => i.d), 0.01);
@@ -144,8 +144,8 @@
     out.push(sec(n++, "المسار الزمني"));
     out.push(strip(t));
     out.push(sec(n++, "سجل الإجراءات"));
-    out.push(h(`<table class="f-tbl log" data-split data-cont="سجل الإجراءات – ${esc(t.ref)}"><thead class="split-head"><tr><th style="width:30px">م</th><th style="width:82px">التاريخ</th><th style="width:110px">نوع الإجراء</th><th>التفاصيل</th><th style="width:130px">الجهة / المنفذ</th><th style="width:70px">الفاصل</th></tr></thead>
-      <tbody class="split-body">${evs.map((e, i) => `<tr><td class="num">${i + 1}</td><td class="num">${fmt(e.date)}</td><td>${EVT[e.type].ar}</td><td class="pre">${esc(e.text)}</td><td>${esc(e.by) || "—"}</td>
+    out.push(h(`<table class="f-tbl log" data-split data-cont="سجل الإجراءات – ${esc(t.ref)}"><thead class="split-head"><tr><th style="width:30px">م</th><th style="width:82px">التاريخ</th><th style="width:64px">النوع</th><th style="width:96px">الأداة</th><th>التفاصيل</th><th style="width:130px">الجهة / المنفذ</th><th style="width:70px">الفاصل</th></tr></thead>
+      <tbody class="split-body">${evs.map((e, i) => `<tr><td class="num">${i + 1}</td><td class="num">${fmt(e.date)}</td><td>${evTypeAr(e)}</td><td>${e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : "—"}</td><td class="pre">${esc(e.text)}</td><td>${esc(e.by) || "—"}</td>
         <td class="num">${i ? dur(daysBetween(evs[i - 1].date, e.date)) : "—"}</td></tr>`).join("")}</tbody></table>`));
     out.push(h(`<div class="f-note"><b>${t.status === "closed" ? "نتيجة الإقفال" : "الوضع الحالي"}: </b>${topicHeadline(t)}.</div>`));
     const nx = lines(t.nextSteps), rk = lines(t.risks);
