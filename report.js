@@ -1,50 +1,178 @@
 "use strict";
 /* =====================================================================
-   Report engine
-   - builds fixed-size A4 pages (cover, contents, dashboard, table,
-     Gantt, horizontal and vertical timelines) in the preview overlay
-   - paginates content blocks automatically (tables / Gantt rows split
-     across pages, headings stay with what follows, "continued" labels)
-   - downloads the PDF directly (each page rasterised with html-to-image
-     and placed in a jsPDF document) or prints the same pages.
+   Report engine (core)
+   - three report templates register themselves in TPL (tpl-*.js):
+       formal  – رسمي حكومي
+       consult – استشاري
+       modern  – لوحة حديثة
+   - each template builds fixed-size A4 landscape pages from blocks; the
+     Pager paginates them (tables / Gantt rows split across pages,
+     headings stay with what follows, page shells repeat on every page)
+   - output: browser print → "Save as PDF" (vector, selectable text),
+     or a one-click image PDF (html-to-image + jsPDF).
    Relies on the globals defined in index.html (db, STATUS, EVT, ...).
    ===================================================================== */
 
+const TPL = {};
 const AR_MONTHS = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
-const fmtLong = iso => { if (!iso) return "—"; const [y, m, d] = iso.split("-").map(Number); return `${d} ${AR_MONTHS[m - 1]} ${y}`; };
-const clip = (s, n) => { s = String(s ?? ""); return s.length > n ? s.slice(0, n).trim() + "…" : s; };
 const DAY_MS = 86400000;
+const PG_W = 1123, PG_H = 793;   // A4 landscape at 96dpi
 
-const DEFAULT_SETTINGS = {
-  org: "", dept: "", reportTitle: "تقرير متابعة المواضيع", preparedBy: "",
-  classification: "داخلي", footer: "", logo: "", primary: "#1f4e79", accent: "#c9a227",
+/* ---------------- text helpers ---------------- */
+const fmtLong = iso => { if (!iso) return "—"; const [y, m, d] = iso.split("-").map(Number); return `${d} ${AR_MONTHS[m - 1]} ${y}`; };
+const fmtShort = iso => { if (!iso) return "—"; const [, m, d] = iso.split("-").map(Number); return `${d} ${AR_MONTHS[m - 1]}`; };
+const clip = (s, n) => { s = String(s ?? "").replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, n).trim() + "…" : s; };
+const lines = s => String(s ?? "").split(/\n+/).map(x => x.replace(/^[\s\-•*·]+/, "").trim()).filter(Boolean);
+
+// Arabic counted noun for days: يوم واحد، يومان، 3 أيام، 11 يوماً
+function dur(n) {
+  n = Math.abs(n);
+  if (n === 0) return "اليوم نفسه";
+  if (n === 1) return "يوم واحد";
+  if (n === 2) return "يومان";
+  if (n <= 10) return `${n} أيام`;
+  return `${n} يوماً`;
+}
+// "N مواضيع" with the right noun form
+function topicsN(n) {
+  if (n === 1) return "موضوع واحد";
+  if (n === 2) return "موضوعان";
+  if (n <= 10) return `${n} مواضيع`;
+  return `${n} موضوعاً`;
+}
+
+/* ---------------- data helpers ---------------- */
+const lateDays = t => {
+  if (!t.dueDate) return 0;
+  if (t.status === "closed") return t.closeDate > t.dueDate ? daysBetween(t.dueDate, t.closeDate) : 0;
+  return t.dueDate < todayISO() ? daysBetween(t.dueDate, todayISO()) : 0;
 };
-const THEMES = [
-  ["كحلي وذهبي", "#1f4e79", "#c9a227"],
-  ["أخضر", "#0b6b3a", "#c9a227"],
-  ["عنابي", "#7a1f3d", "#d4a373"],
-  ["فيروزي", "#0f6e74", "#f2a541"],
-  ["فحمي", "#2f3542", "#e1b12c"],
-  ["بنفسجي", "#4c2a85", "#2bb3a3"],
-];
-const rs = () => ({ ...DEFAULT_SETTINGS, ...(db.settings || {}) });
+const sinceLast = t => daysBetween((lastEvent(t) || { date: t.openDate }).date, todayISO());
+const realEvents = t => sortedEvents(t).filter(e => e.type !== "create");
 
-const SECTION_DEFS = {
-  cover: ["صفحة الغلاف", "الشعار واسم الجهة وعنوان التقرير وأرقام سريعة"],
-  toc:   ["المحتويات", "فهرس بأرقام الصفحات"],
-  dash:  ["اللوحة التنفيذية", "مؤشرات، توزيع الحالات والتصنيفات، النشاط، المتأخرات وأحدث المستجدات"],
-  table: ["جدول ملخص المواضيع", "صف لكل موضوع مع آخر مستجد"],
-  gantt: ["المخطط الزمني الشامل (Gantt)", "كل المواضيع على محور زمني واحد مع الأحداث والاستحقاق واليوم"],
-  htl:   ["الخط الزمني الأفقي", "لكل موضوع: بطاقات الأحداث على خط زمني أفقي"],
-  vtl:   ["الخط الزمني التفصيلي", "لكل موضوع: كل الأحداث بالتفصيل مجمّعة حسب الشهر"],
-};
-const MULTI_KEYS = ["cover", "toc", "dash", "table", "gantt", "htl", "vtl"];
-const SINGLE_KEYS = ["cover", "htl", "vtl"];
-const OPTS_KEY = "topicTracker.reportOpts";
+function stats(topics) {
+  const s = { total: topics.length, open: 0, progress: 0, hold: 0, closed: 0, events: 0 };
+  topics.forEach(t => { s[t.status]++; s.events += t.events.length; });
+  s.active = s.total - s.closed;
+  s.overdue = topics.filter(isOverdue);
+  const closed = topics.filter(t => t.status === "closed");
+  s.avgClose = closed.length ? Math.round(closed.reduce((a, t) => a + ageDays(t), 0) / closed.length) : null;
+  s.closedOnTime = closed.filter(t => !lateDays(t)).length;
+  s.pct = s.total ? Math.round(s.closed / s.total * 100) : 0;
+  s.stale = topics.filter(t => t.status !== "closed" && sinceLast(t) > 14);
+  s.dueSoon = topics.filter(t => t.status !== "closed" && t.dueDate && !isOverdue(t) && daysBetween(todayISO(), t.dueDate) <= 7);
+  s.from = topics.map(t => t.openDate).sort()[0];
+  return s;
+}
 
-/* ---------- icons (24px stroke icons, drawn white on coloured discs) ---------- */
+/* auto-written headline sentence for one topic; <em> marks the alarming part */
+function topicHeadline(t) {
+  const le = lastEvent(t), title = esc(t.title);
+  const last = le && le.type !== "create" ? esc(clip(le.text, 80)) : "";
+  if (t.status === "closed") {
+    let s = `أُقفل موضوع «${title}» بعد ${dur(ageDays(t))} من فتحه`;
+    if (t.dueDate) {
+      const d = daysBetween(t.dueDate, t.closeDate);
+      s += d <= 0 ? `، قبل الاستحقاق بـ ${dur(-d)}` : `، <em>متجاوزاً الاستحقاق بـ ${dur(d)}</em>`;
+    }
+    return s + (t.closeNote ? `؛ ${esc(clip(t.closeNote, 90))}` : "");
+  }
+  if (!realEvents(t).length) return `«${title}» <em>لم يُسجَّل عليه أي إجراء</em> منذ فتحه قبل ${dur(ageDays(t))}`;
+  if (isOverdue(t)) return `«${title}» <em>متأخر ${dur(lateDays(t))} عن الاستحقاق</em>؛ آخر إجراء قبل ${dur(sinceLast(t))}: ${last}`;
+  if (t.status === "hold") return `«${title}» <em>معلّق</em>، وآخر إجراء عليه قبل ${dur(sinceLast(t))}: ${last}`;
+  const due = t.dueDate ? `، ومتبقٍ ${dur(daysBetween(todayISO(), t.dueDate))} على الاستحقاق` : "";
+  return `«${title}» ${STATUS[t.status].ar}${due}؛ آخر إجراء: ${last}`;
+}
+
+/* headline for a set of topics */
+function summaryHeadline(topics) {
+  const s = stats(topics);
+  if (!s.active) return `أُقفلت جميع المواضيع (${topicsN(s.total)})${s.avgClose !== null ? ` بمتوسط ${dur(s.avgClose)} للموضوع` : ""}`;
+  let h = s.active === s.total ? `جميع المواضيع (${topicsN(s.total)}) لا تزال مفتوحة` : `${topicsN(s.active)} من أصل ${s.total} لا تزال مفتوحة`;
+  const parts = [];
+  if (s.overdue.length === 1) parts.push(`<em>موضوع واحد تجاوز استحقاقه</em> («${esc(clip(s.overdue[0].title, 40))}» بـ ${dur(lateDays(s.overdue[0]))})`);
+  else if (s.overdue.length) parts.push(`<em>${topicsN(s.overdue.length)} تجاوزت استحقاقها</em>`);
+  if (s.hold === 1) parts.push("وموضوع واحد معلّق");
+  else if (s.hold) parts.push(`و${topicsN(s.hold)} معلّقة`);
+  if (!parts.length && s.dueSoon.length) parts.push(`و${topicsN(s.dueSoon.length)} يستحق خلال أسبوع`);
+  if (!parts.length) parts.push("ولا يوجد أي تأخير عن الاستحقاق");
+  return h + "؛ " + parts.join("، ");
+}
+
+/* ranked key points for the period */
+function keyPoints(topics, max = 5) {
+  const s = stats(topics), out = [];
+  const lastTxt = t => { const le = lastEvent(t); return le && le.type !== "create" ? clip(le.text, 70) : "لا إجراءات مسجلة"; };
+  s.overdue.sort((a, b) => lateDays(b) - lateDays(a)).forEach(t =>
+    out.push({ tone: "bad", title: t.title, text: `متأخر ${dur(lateDays(t))} عن الاستحقاق؛ ${lastTxt(t)}.` }));
+  topics.filter(t => t.status === "hold").forEach(t =>
+    out.push({ tone: "warn", title: t.title, text: `معلّق؛ آخر إجراء قبل ${dur(sinceLast(t))}${t.dueDate && !isOverdue(t) ? `، والاستحقاق بعد ${dur(daysBetween(todayISO(), t.dueDate))}` : ""}.` }));
+  s.dueSoon.filter(t => t.status !== "hold").forEach(t =>
+    out.push({ tone: "warn", title: t.title, text: `يستحق خلال ${dur(daysBetween(todayISO(), t.dueDate))}؛ ${lastTxt(t)}.` }));
+  s.stale.filter(t => !isOverdue(t) && t.status !== "hold").forEach(t =>
+    out.push({ tone: "warn", title: t.title, text: `لا تحديث منذ ${dur(sinceLast(t))}.` }));
+  if (s.closed) {
+    const ok = s.closedOnTime, n = s.closed;
+    const tail = n === 1 ? (ok ? "في موعده" : "بعد موعد استحقاقه") : ok === n ? (n === 2 ? "كلاهما في الموعد" : "جميعها في موعدها") : `${ok} منها في موعدها`;
+    out.push({ tone: "good", title: "", text: `أُقفل ${topicsN(n)} بمتوسط ${dur(s.avgClose)}، ${tail}.` });
+  }
+  return out.slice(0, max);
+}
+
+const decisionsOf = topics => topics.filter(t => t.status !== "closed" && (t.decision || "").trim()).map(t => ({ t, text: t.decision.trim() }));
+
+/* time scale for Gantt-like views; x() returns % from the right (RTL) */
+function timeScale(dates, padRatio = 0.02) {
+  dates = dates.filter(Boolean).sort();
+  let lo = toUTC(dates[0]), hi = toUTC(dates[dates.length - 1]);
+  const span = Math.max(7, (hi - lo) / DAY_MS);
+  const pad = Math.max(1, Math.round(span * padRatio)) * DAY_MS;
+  lo -= pad; hi += pad + DAY_MS;
+  const W = hi - lo;
+  const x = d => ((typeof d === "number" ? d : toUTC(d)) - lo) / W * 100;
+  // pick tick unit
+  const days = W / DAY_MS;
+  const ticks = [];
+  const d0 = new Date(lo);
+  if (days <= 70) {
+    for (let t = lo - ((d0.getUTCDay() + 1) % 7) * DAY_MS; t <= hi; t += 7 * DAY_MS) {
+      if (t < lo) continue;
+      const d = new Date(t);
+      ticks.push({ t, label: `${d.getUTCDate()} ${AR_MONTHS[d.getUTCMonth()]}` });
+    }
+  } else {
+    const step = days <= 400 ? 1 : days <= 1100 ? 3 : 12;
+    let y = d0.getUTCFullYear(), m = d0.getUTCMonth() + 1;
+    m = Math.ceil(m / step) * step;
+    for (let t = Date.UTC(y, m, 1); t <= hi; ) {
+      const d = new Date(t);
+      ticks.push({ t, label: step === 12 ? String(d.getUTCFullYear()) : AR_MONTHS[d.getUTCMonth()] + (d.getUTCMonth() === 0 || !ticks.length ? ` ${d.getUTCFullYear()}` : "") });
+      t = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + step, 1);
+    }
+  }
+  return { lo, hi, x, ticks, days };
+}
+
+/* calendar buckets (months / quarters / years) between two ISO dates */
+function monthBuckets(fromISO, toISO, maxCols = 8) {
+  const a = new Date(toUTC(fromISO)), b = new Date(toUTC(toISO));
+  const months = (b.getUTCFullYear() - a.getUTCFullYear()) * 12 + b.getUTCMonth() - a.getUTCMonth() + 1;
+  const step = months <= maxCols ? 1 : months <= maxCols * 3 ? 3 : 12;
+  const out = [];
+  let y = a.getUTCFullYear(), m = Math.floor(a.getUTCMonth() / step) * step;
+  while (Date.UTC(y, m, 1) <= b.getTime()) {
+    const s = Date.UTC(y, m, 1), e = Date.UTC(y, m + step, 1);
+    const d = new Date(s);
+    const label = step === 1 ? AR_MONTHS[d.getUTCMonth()] : step === 3 ? `الربع ${Math.floor(d.getUTCMonth() / 3) + 1}<br>${d.getUTCFullYear()}` : String(d.getUTCFullYear());
+    out.push({ s, e, label, year: d.getUTCFullYear() });
+    m += step; if (m >= 12) { y += Math.floor(m / 12); m %= 12; }
+  }
+  return out;
+}
+
+/* ---------------- icons ---------------- */
 const ICONS = {
-  create:   '<path d="M12 5v14"/><path d="M5 12h14"/>',
+  create:   '<path d="M12 5v14M5 12h14"/>',
   update:   '<path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/>',
   followup: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   meeting:  '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17 14.2c2.6.3 4.5 2.6 4.5 5.8"/>',
@@ -54,52 +182,41 @@ const ICONS = {
   status:   '<path d="M7 4 3 8l4 4"/><path d="M3 8h14"/><path d="m17 20 4-4-4-4"/><path d="M21 16H7"/>',
   close:    '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
   reopen:   '<path d="M4 12a8 8 0 1 0 2.34-5.66"/><path d="M4 4v5h5"/>',
-  today:    '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  clock:    '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  alert:    '<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17v.5"/>',
+  pause:    '<path d="M9 5v14M15 5v14"/>',
+  list:     '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  trend:    '<path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/>',
   doc:      '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 12h6M9 16h6"/>',
 };
-const icon = (k, size = 14, color = "#fff", sw = 2.4) =>
+const icon = (k, size = 14, color = "#fff", sw = 2.2) =>
   `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="${color}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${ICONS[k] || ICONS.update}</svg>`;
-const evMeta = type => type === "today" ? { ar: "الوضع الحالي", color: "#64748b" } : EVT[type];
 
 function h(html) {
   const t = document.createElement("template");
   t.innerHTML = html.trim();
   return t.content.firstElementChild;
 }
-
-/* events of a topic + a trailing "current status" marker for topics still open */
-function eventsWithToday(t) {
-  const evs = sortedEvents(t);
-  if (t.status === "closed") return evs;
-  let txt = `مفتوح منذ ${ageDays(t)} يوم`;
-  if (t.dueDate) {
-    const d = daysBetween(todayISO(), t.dueDate);
-    txt += d < 0 ? ` – متأخر ${-d} يوم عن الاستحقاق` : ` – متبقٍ ${d} يوم على الاستحقاق`;
-  }
-  return [...evs, { id: "today", type: "today", date: todayISO(), text: `${txt} (الحالة: ${STATUS[t.status].ar})`, by: "" }];
-}
+/* a block that opens a new page using a given page shell */
+function onNewPage(el, page) { el.dataset.newpage = "1"; el._page = page; return el; }
 
 /* =====================================================================
    Pager: fills fixed-height page bodies with blocks
    block attributes:
-     data-newpage  start on a fresh page
-     data-keep     keep with the following block (headings)
-     data-cont     text for a "continued" label when the block opens a page
-     data-split    splittable: rows in .split-body move to the next page,
-                   .split-head is repeated
+     data-newpage   start on a fresh page (el._page = shell options)
+     data-keep      keep with the following block (headings)
+     data-cont      text for a "continued" label when the block opens a page
+     data-split     splittable: rows in .split-body move to the next page,
+                    .split-head is repeated, [data-first-only] is dropped
    ===================================================================== */
 class Pager {
-  constructor(stage, ctx) { this.stage = stage; this.ctx = ctx; this.pages = []; this.body = null; }
+  constructor(stage, ctx, tpl) { Object.assign(this, { stage, ctx, tpl, pages: [], body: null, cur: { kind: "std" } }); }
 
-  page(kind = "std") {
-    const { S, orient } = this.ctx;
-    const pg = h(`<div class="pg ${orient}" style="--p:${S.primary};--a:${S.accent}"></div>`);
-    if (kind === "std") {
-      pg.innerHTML = `<div class="pg-stripe"></div>${this.headHTML()}<div class="pg-body"></div>${this.footHTML()}`;
-      this.body = pg.querySelector(".pg-body");
-    } else {
-      this.body = null;
-    }
+  page(first = true) {
+    const pg = h(`<div class="pg t-${this.tpl.key}"></div>`);
+    pg.style.cssText = this.tpl.vars(this.ctx);
+    pg.innerHTML = this.tpl.shell(this.ctx, this.cur, first);
+    this.body = pg.querySelector(".pg-body");
     const wrap = h(`<div class="pg-wrap"><div class="pg-scale"></div></div>`);
     wrap.firstElementChild.appendChild(pg);
     this.stage.appendChild(wrap);
@@ -107,37 +224,21 @@ class Pager {
     return pg;
   }
 
-  headHTML() {
-    const { S, title } = this.ctx;
-    const logo = S.logo ? `<img class="logo" src="${S.logo}" alt="">` : `<div class="logo-ph">${icon("doc", 18)}</div>`;
-    return `<div class="pg-head">${logo}
-      <div class="org"><b>${esc(S.org || "نظام متابعة المواضيع")}</b><span>${esc(S.dept)}</span></div>
-      <div class="rt"><b>${esc(title)}</b><span>${fmtLong(todayISO())}</span></div></div>`;
-  }
-
-  footHTML() {
-    const { S } = this.ctx;
-    const note = S.footer || (S.preparedBy ? "إعداد: " + S.preparedBy : "");
-    return `<div class="pg-foot">${S.classification ? `<span class="cls">${esc(S.classification)}</span>` : ""}
-      <span>${esc(note)}</span><span class="num"></span></div>`;
-  }
-
   fits() { return this.body.scrollHeight <= this.body.clientHeight + 1; }
-
-  // page holds nothing but labels/headings that would travel with the block anyway
   alone(block) { return [...this.body.children].every(c => c === block || c.classList.contains("cont") || c.dataset.keep); }
-
   cont(text) { return h(`<div class="cont">تابع: ${esc(text)}</div>`); }
 
   add(block) {
-    if (!this.body || (block.dataset.newpage && this.body.children.length)) this.page();
+    if (!this.body || block.dataset.newpage) {
+      if (block._page) this.cur = block._page;
+      this.page(true);
+    }
     this.body.appendChild(block);
     if (this.fits()) return;
     if (block.hasAttribute("data-split") && this.split(block)) return;
     block.remove();
     if (this.alone(block)) { this.body.appendChild(block); return; }   // oversized: keep (clipped)
 
-    // move trailing "keep with next" blocks along to the new page
     const kids = [...this.body.children];
     let k = kids.length;
     while (k > 0 && kids[k - 1].dataset.keep) k--;
@@ -145,9 +246,9 @@ class Pager {
     if (k === 0 || (k === 1 && kids[0].classList.contains("cont"))) carry = [];
     carry.forEach(c => c.remove());
 
-    this.page();
+    this.page(false);
     const first = carry[0] || block;
-    if (first.dataset.cont && !first.dataset.newpage) this.body.appendChild(this.cont(first.dataset.cont));
+    if (first.dataset.cont) this.body.appendChild(this.cont(first.dataset.cont));
     carry.forEach(c => this.body.appendChild(c));
     this.body.appendChild(block);
     if (this.fits()) return;
@@ -160,7 +261,7 @@ class Pager {
     while (!this.fits() && body.children.length > 1) {
       const r = body.lastElementChild; r.remove(); rest.unshift(r);
     }
-    if (!this.fits() && !this.alone(block)) {            // not even one row fits here
+    if (!this.fits() && !this.alone(block)) {
       body.append(...rest);
       block.remove();
       return false;
@@ -168,8 +269,10 @@ class Pager {
     if (!rest.length) return true;
     const next = block.cloneNode(true);
     next.removeAttribute("data-newpage");
+    next.querySelectorAll("[data-first-only]").forEach(e => e.remove());
+    next.classList.add("is-cont");
     next.querySelector(".split-body").replaceChildren(...rest);
-    this.page();
+    this.page(false);
     if (next.dataset.cont) this.body.appendChild(this.cont(next.dataset.cont));
     this.body.appendChild(next);
     if (!this.fits()) this.split(next);
@@ -178,462 +281,71 @@ class Pager {
 }
 
 /* =====================================================================
-   Section builders – each returns an array of blocks
+   Settings
    ===================================================================== */
-function secHead(ctx, key, title, sub) {
-  ctx.secNo += 1;
-  ctx.sections.push({ key, title, n: ctx.secNo });
-  return h(`<div class="sec-h" data-keep="1" data-newpage="1" data-section="${key}">
-    <span class="n">${pad(ctx.secNo)}</span><div><h2>${esc(title)}</h2>${sub ? `<p>${esc(sub)}</p>` : ""}</div></div>`);
-}
-
-const statusPill = t => `<span class="pill" style="background:${STATUS[t.status].color}">${STATUS[t.status].ar}</span>`;
-const overduePill = t => isOverdue(t) ? `<span class="pill" style="background:#dc2626">متأخر ${daysBetween(t.dueDate, todayISO())} يوم</span>` : "";
-
-/* ---------- cover ---------- */
-function coverPage(P, ctx, topics) {
-  const { S, single } = ctx;
-  const pg = P.page("cover");
-  const evCount = topics.reduce((a, t) => a + t.events.length, 0);
-  const from = topics.map(t => t.openDate).sort()[0];
-  const closed = topics.filter(t => t.status === "closed").length;
-  const t0 = topics[0];
-  const logo = S.logo ? `<img src="${S.logo}" alt="">` : icon("doc", 80, S.primary, 1.6);
-  const deco = `<svg class="cv-deco" viewBox="0 0 400 600" preserveAspectRatio="xMinYMax slice">
-    ${[150, 210, 270, 330].map((r, i) => `<circle cx="0" cy="600" r="${r}" fill="none" stroke="${S.accent}" stroke-opacity="${0.55 - i * 0.12}" stroke-width="${i ? 1.5 : 3}"/>`).join("")}
-    <circle cx="400" cy="0" r="120" fill="#fff" fill-opacity=".05"/><circle cx="400" cy="0" r="70" fill="#fff" fill-opacity=".05"/></svg>`;
-  const stats = single
-    ? [[t0.events.length, "حدث مسجّل"], [ageDays(t0), "يوم من الفتح"], [STATUS[t0.status].ar, "الحالة"]]
-    : [[topics.length, "موضوع"], [topics.length - closed, "قيد المتابعة"], [closed, "مقفل"], [evCount, "حدث مسجّل"]];
-  pg.innerHTML = `<div class="cover">
-    <div class="cv-side">${deco}
-      <div class="cv-logo">${logo}</div>
-      <div class="cv-org">${esc(S.org || "نظام متابعة المواضيع")}</div>
-      ${S.dept ? `<div class="cv-dept">${esc(S.dept)}</div>` : ""}
-    </div>
-    <div class="cv-main">
-      ${S.classification ? `<div class="cv-cls">${esc(S.classification)}</div>` : ""}
-      <div class="cv-kicker">${single ? "تقرير متابعة موضوع" : "تقرير دوري"}</div>
-      <div class="cv-title">${esc(single ? t0.title : S.reportTitle)}</div>
-      <div class="cv-sub">${single ? `${esc(t0.ref)} · ${esc(t0.category || "بدون تصنيف")}` : "النطاق: " + esc(scopeLabel())}</div>
-      <div class="cv-rule"></div>
-      <div class="cv-meta">
-        <div><span>تاريخ الإصدار</span><b>${fmtLong(todayISO())}</b></div>
-        <div><span>الفترة المغطاة</span><b>${fmt(from)} – ${fmt(todayISO())}</b></div>
-        ${S.preparedBy ? `<div><span>إعداد</span><b>${esc(S.preparedBy)}</b></div>` : ""}
-        ${single && t0.owner ? `<div><span>المسؤول عن المتابعة</span><b>${esc(t0.owner)}</b></div>` : ""}
-      </div>
-      <div class="cv-stats">${stats.map(([v, l]) => `<div><b>${esc(v)}</b><span>${l}</span></div>`).join("")}</div>
-      <div class="cv-foot"><span>${esc(S.footer || S.reportTitle)}</span><span>${fmt(todayISO())}</span></div>
-    </div></div>`;
-}
-
-/* ---------- contents ---------- */
-function tocBlocks(ctx) {
-  ctx.tocEl = h(`<div class="toc"></div>`);
-  return [h(`<div class="sec-h" data-keep="1"><span class="n">${icon("doc", 20)}</span><div><h2>المحتويات</h2></div></div>`), ctx.tocEl];
-}
-
-function fillToc(ctx, pages) {
-  if (!ctx.tocEl) return;
-  const pageOf = el => pages.findIndex(pg => pg.contains(el)) + 1;
-  let html = "";
-  ctx.sections.forEach(s => {
-    const el = document.querySelector(`#rpStage [data-section="${s.key}"]`);
-    html += `<div class="toc-row"><span class="n">${pad(s.n)}</span><span class="tt">${esc(s.title)}</span><span class="dots"></span><span class="pn">${el ? pageOf(el) : ""}</span></div>`;
-    if (s.key === ctx.topicIndexSection) {
-      const cards = [...document.querySelectorAll(`#rpStage [data-topic-of="${s.key}"]`)];
-      if (cards.length <= 28) cards.forEach(c => {
-        html += `<div class="toc-sub"><span>${esc(c.dataset.topicLabel)}</span><span class="dots"></span><span>${pageOf(c)}</span></div>`;
-      });
-    }
-  });
-  ctx.tocEl.innerHTML = html;
-}
-
-/* ---------- executive dashboard ---------- */
-function dashBlocks(ctx, topics) {
-  const today = todayISO();
-  const total = topics.length;
-  const by = { open: 0, progress: 0, hold: 0, closed: 0 };
-  topics.forEach(t => by[t.status]++);
-  const active = total - by.closed;
-  const overdue = topics.filter(isOverdue);
-  const closedDur = topics.filter(t => t.status === "closed").map(ageDays);
-  const avg = closedDur.length ? Math.round(closedDur.reduce((a, b) => a + b, 0) / closedDur.length) : null;
-  const pct = total ? Math.round(by.closed / total * 100) : 0;
-  const evCount = topics.reduce((a, t) => a + t.events.length, 0);
-  const stale = topics.filter(t => t.status !== "closed")
-    .map(t => ({ t, d: daysBetween(lastEvent(t).date, today) }))
-    .filter(x => x.d > 14).sort((a, b) => b.d - a.d);
-
-  const kpi = (v, l, s, c) => `<div class="kpi" style="--kc:${c}"><div class="v" style="color:${c}">${v}</div><div class="l">${l}</div><div class="s">${s}</div></div>`;
-  const kpis = h(`<div class="kpis">
-    ${kpi(total, "إجمالي المواضيع", `${evCount} حدثاً مسجّلاً`, "var(--p)")}
-    ${kpi(active, "قيد المتابعة", `${by.open} مفتوح · ${by.progress} قيد الإجراء · ${by.hold} معلّق`, STATUS.progress.color)}
-    ${kpi(by.closed, "مقفلة", `نسبة الإنجاز ${pct}%`, STATUS.closed.color)}
-    ${kpi(overdue.length, "متأخرة عن الاستحقاق", overdue.length ? "تتطلب تدخلاً" : "لا يوجد تأخير", "#dc2626")}
-    ${kpi(avg === null ? "—" : `${avg} <small>يوم</small>`, "متوسط مدة الإقفال", closedDur.length ? `محسوب من ${closedDur.length} موضوع مقفل` : "لا توجد مواضيع مقفلة", "var(--ink2)")}
-    ${kpi(stale.length, "بدون تحديث +14 يوماً", stale.length ? "بحاجة لمتابعة" : "كل المواضيع محدّثة", "#b45309")}
-  </div>`);
-
-  /* donut by status */
-  const R = 50, SW = 20, C = 2 * Math.PI * R, GAP = 2;
-  const parts = Object.keys(STATUS).filter(k => by[k]);
-  let off = 0;
-  const arcs = parts.map(k => {
-    const len = C * by[k] / total;
-    const seg = `<circle cx="70" cy="70" r="${R}" fill="none" stroke="${STATUS[k].color}" stroke-width="${SW}"
-      stroke-dasharray="${Math.max(0.1, len - (parts.length > 1 ? GAP : 0))} ${C}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"/>`;
-    off += len;
-    return seg;
-  }).join("");
-  const donut = `<div class="card"><h4>توزيع المواضيع حسب الحالة</h4><div class="donut-wrap">
-    <svg width="140" height="140" viewBox="0 0 140 140">${arcs}
-      <text x="70" y="70" text-anchor="middle" font-family="Plex Arabic" font-size="26" font-weight="700" fill="#1d2433">${total}</text>
-      <text x="70" y="90" text-anchor="middle" font-family="Plex Arabic" font-size="11" fill="#667085">موضوع</text></svg>
-    <div class="donut-lg">${Object.keys(STATUS).map(k => `<div><i style="background:${STATUS[k].color}"></i>${STATUS[k].ar}<b>${by[k]}</b><em>${total ? Math.round(by[k] / total * 100) : 0}%</em></div>`).join("")}</div>
-  </div></div>`;
-
-  /* stacked bars by category */
-  const cats = new Map();
-  topics.forEach(t => {
-    const k = t.category || "بدون تصنيف";
-    if (!cats.has(k)) cats.set(k, { open: 0, progress: 0, hold: 0, closed: 0, n: 0 });
-    const c = cats.get(k); c[t.status]++; c.n++;
-  });
-  let catArr = [...cats.entries()].sort((a, b) => b[1].n - a[1].n);
-  if (catArr.length > 7) {
-    const other = { open: 0, progress: 0, hold: 0, closed: 0, n: 0 };
-    catArr.slice(6).forEach(([, c]) => Object.keys(other).forEach(k => other[k] += c[k]));
-    catArr = [...catArr.slice(0, 6), ["أخرى", other]];
-  }
-  const maxN = Math.max(1, ...catArr.map(([, c]) => c.n));
-  const bars = `<div class="card"><h4>المواضيع حسب التصنيف<small>مكدّسة حسب الحالة</small></h4><div class="hbars">
-    ${catArr.map(([name, c]) => `<div class="hbar"><span class="nm">${esc(name)}</span>
-      <div class="tr" style="width:${c.n / maxN * 100}%">${Object.keys(STATUS).filter(k => c[k]).map(k => `<span style="flex:${c[k]};background:${STATUS[k].color}"></span>`).join("")}</div>
-      <span class="vv">${c.n}</span></div>`).join("")}
-    </div><div class="lg" style="margin-top:8px">${Object.keys(STATUS).map(k => `<span><i style="background:${STATUS[k].color}"></i>${STATUS[k].ar}</span>`).join("")}</div></div>`;
-
-  /* activity over time */
-  const dates = topics.flatMap(t => t.events.map(e => e.date)).sort();
-  let activity = `<div class="card"><h4>النشاط الزمني</h4><div class="empty-note">لا توجد أحداث.</div></div>`;
-  if (dates.length) {
-    const span = daysBetween(dates[0], today);
-    const monthly = span > 84;
-    const key = iso => {
-      const t = toUTC(iso), d = new Date(t);
-      return monthly ? Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) : t - ((d.getUTCDay() + 1) % 7) * DAY_MS;
-    };
-    const step = t => { if (!monthly) return t + 7 * DAY_MS; const d = new Date(t); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1); };
-    let buckets = [];
-    for (let t = key(dates[0]); t <= key(today); t = step(t)) buckets.push(t);
-    if (buckets.length > 18) buckets = buckets.slice(-18);
-    const counts = new Map(buckets.map(b => [b, 0]));
-    dates.forEach(d => { const k = key(d); if (counts.has(k)) counts.set(k, counts.get(k) + 1); });
-    const mx = Math.max(1, ...counts.values());
-    const every = buckets.length > 12 ? 2 : 1;
-    const lbl = b => { const d = new Date(b); return monthly ? AR_MONTHS[d.getUTCMonth()] : `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}`; };
-    activity = `<div class="card"><h4>النشاط الزمني<small>عدد الأحداث ${monthly ? "شهرياً" : "أسبوعياً"}</small></h4>
-      <div class="cols">${buckets.map(b => { const v = counts.get(b); return `<div class="c">${v ? `<b>${v}</b>` : ""}<i style="height:${v / mx * 100}%;${v ? "" : "min-height:0"}"></i></div>`; }).join("")}</div>
-      <div class="cols-x">${buckets.map((b, i) => `<span>${i % every ? "" : lbl(b)}</span>`).join("")}</div></div>`;
-  }
-
-  /* lists */
-  const late = overdue.map(t => ({ t, d: daysBetween(t.dueDate, today) })).sort((a, b) => b.d - a.d).slice(0, 6);
-  const latest = topics.flatMap(t => t.events.filter(e => e.type !== "create").map(e => ({ t, e })))
-    .sort((a, b) => b.e.date.localeCompare(a.e.date) || b.e.seq - a.e.seq).slice(0, 6);
-  const listCard = (title, items, empty) => `<div class="card"><h4>${title}</h4>${items.length ? items.join("") : `<div class="empty-note">${empty}</div>`}</div>`;
-  const lists = h(`<div class="g3">
-    ${listCard(`${icon("today", 13, "#dc2626")} المواضيع المتأخرة عن الاستحقاق`, late.map(({ t, d }) =>
-      `<div class="li"><span class="ref">${esc(t.ref)}</span><span class="ttl">${esc(clip(t.title, 60))}${t.owner ? ` <span class="d">· ${esc(t.owner)}</span>` : ""}</span><span class="tag" style="color:#dc2626">متأخر ${d} يوم</span></div>`), "لا توجد مواضيع متأخرة.")}
-    ${listCard(`${icon("update", 13, "var(--p)")} أحدث المستجدات`, latest.map(({ t, e }) =>
-      `<div class="li"><span class="d">${fmt(e.date)}</span><span class="ttl"><span class="ref">${esc(t.ref)}</span> · <b style="color:${EVT[e.type].color}">${EVT[e.type].ar}:</b> ${esc(clip(e.text, 70))}</span></div>`), "لا توجد مستجدات.")}
-    ${listCard(`${icon("followup", 13, "#b45309")} بحاجة لمتابعة (بدون تحديث +14 يوماً)`, stale.slice(0, 6).map(({ t, d }) =>
-      `<div class="li"><span class="ref">${esc(t.ref)}</span><span class="ttl">${esc(clip(t.title, 60))}</span><span class="tag" style="color:#b45309">منذ ${d} يوم</span></div>`), "كل المواضيع المفتوحة محدّثة.")}
-  </div>`);
-
-  return [secHead(ctx, "dash", "اللوحة التنفيذية", `ملخص الوضع كما في ${fmtLong(today)}`),
-    kpis, h(`<div class="g3">${donut}${bars}${activity}</div>`), lists];
-}
-
-/* ---------- summary table ---------- */
-function tableBlocks(ctx, topics) {
-  const rows = topics.map(t => {
-    const le = lastEvent(t);
-    return `<tr><td class="ref">${esc(t.ref)}</td>
-      <td><b>${esc(t.title)}</b><span class="sub">${esc(t.category || "")}${t.party ? " · " + esc(t.party) : ""}</span></td>
-      <td>${esc(t.owner) || "—"}</td>
-      <td>${statusPill(t)}</td>
-      <td class="num-t">${fmt(t.openDate)}</td>
-      <td class="num-t ${isOverdue(t) ? "late" : ""}">${fmt(t.dueDate)}${isOverdue(t) ? `<span class="sub late">متأخر ${daysBetween(t.dueDate, todayISO())} يوم</span>` : ""}</td>
-      <td class="num-t">${fmt(t.closeDate)}</td>
-      <td class="num-t">${ageDays(t)}</td>
-      <td class="num-t">${t.events.length}</td>
-      <td>${le ? `<span class="sub">${fmt(le.date)} · ${EVT[le.type].ar}</span>${esc(clip(le.text, 110))}` : ""}</td></tr>`;
-  }).join("");
-  return [secHead(ctx, "table", "جدول ملخص المواضيع", `${topics.length} موضوع`),
-    h(`<table class="tbl" data-split data-cont="جدول ملخص المواضيع"><thead class="split-head"><tr>
-      <th>المرجع</th><th style="width:26%">الموضوع</th><th>المسؤول</th><th>الحالة</th><th>الفتح</th><th>الاستحقاق</th><th>الإقفال</th><th>المدة</th><th>الأحداث</th><th style="width:26%">آخر مستجد</th>
-    </tr></thead><tbody class="split-body">${rows}</tbody></table>`)];
-}
-
-/* ---------- Gantt ---------- */
-function ganttBlocks(ctx, topics) {
-  const today = todayISO();
-  const all = topics.flatMap(t => [t.openDate, endDate(t), t.dueDate, ...t.events.map(e => e.date)]).filter(Boolean).concat(today).sort();
-  const min = all[0], max = all[all.length - 1];
-  const span = Math.max(1, daysBetween(min, max));
-  const padD = Math.max(2, Math.round(span * 0.03));
-  const total = span + 2 * padD;
-  const pos = iso => (daysBetween(min, iso) + padD) / total * 100;
-  const posT = t => (Math.round((t - toUTC(min)) / DAY_MS) + padD) / total * 100;
-  const lo = toUTC(min) - padD * DAY_MS, hi = toUTC(max) + padD * DAY_MS;
-
-  // ticks: months for longer ranges, weeks (from Saturday) otherwise
-  const monthly = span > 70;
-  const ticks = [], labels = [];
-  if (monthly) {
-    const d0 = new Date(lo);
-    for (let t = Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), 1); t <= hi; ) {
-      const d = new Date(t), nxt = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
-      if (t >= lo) ticks.push(t);
-      const a = Math.max(t, lo), b = Math.min(nxt, hi);
-      if ((b - a) / DAY_MS >= 8) {
-        const first = !labels.length || d.getUTCMonth() === 0;
-        labels.push({ x: (posT(a) + posT(b)) / 2, txt: AR_MONTHS[d.getUTCMonth()] + (first ? ` ${d.getUTCFullYear()}` : ""), yr: first });
-      }
-      t = nxt;
-    }
-  } else {
-    const d0 = new Date(lo);
-    const every = span > 35 ? 2 : 1;
-    let i = 0;
-    for (let t = lo - ((d0.getUTCDay() + 1) % 7) * DAY_MS; t <= hi; t += 7 * DAY_MS, i++) {
-      if (t < lo) continue;
-      ticks.push(t);
-      const d = new Date(t);
-      if (i % every === 0) labels.push({ x: posT(t), txt: `${d.getUTCDate()} ${AR_MONTHS[d.getUTCMonth()]}` });
-    }
-  }
-  const grid = ticks.map(t => `<span class="gt-grid" style="right:${posT(t)}%"></span>`).join("");
-  const todayLine = `<span class="gt-today" style="right:${pos(today)}%"></span>`;
-
-  const head = `<div class="gt-row gt-head"><div class="gt-lbl">الموضوع</div><div class="gt-st">الحالة</div>
-    <div class="gt-track">${grid}${labels.map(l => `<span class="gt-ax ${l.yr ? "yr" : ""}" style="right:${l.x}%">${l.txt}</span>`).join("")}
-    <span class="gt-tlbl" style="right:${pos(today)}%">اليوم</span></div></div>`;
-
-  const rows = topics.map(t => {
-    const s = pos(t.openDate), e = pos(endDate(t));
-    const col = STATUS[t.status].color;
-    let over = "";
-    if (t.dueDate && endDate(t) > t.dueDate) {
-      const a = pos(t.dueDate);
-      over = `<span class="gt-over" style="right:${a}%;width:${Math.max(0.4, e - a)}%"></span>`;
-    }
-    const dots = sortedEvents(t).filter(ev => ev.type !== "close").map(ev =>
-      `<span class="gt-dot" style="right:${pos(ev.date)}%;background:${EVT[ev.type].color}"></span>`).join("");
-    const due = t.dueDate ? `<span class="gt-due" style="right:${pos(t.dueDate)}%"></span>` : "";
-    const end = t.status === "closed" ? `<span class="gt-end" style="right:${e}%">${icon("close", 9, "#fff", 3.5)}</span>` : "";
-    return `<div class="gt-row"><div class="gt-lbl"><b>${esc(t.ref)} · ${esc(t.title)}</b><span>${esc(t.owner || "—")} · ${ageDays(t)} يوم</span></div>
-      <div class="gt-st">${statusPill(t)}</div>
-      <div class="gt-track">${grid}${todayLine}
-        <span class="gt-bar" style="right:${s}%;width:${Math.max(0.4, e - s)}%;background:${col};opacity:.85"></span>${over}${due}${dots}${end}</div></div>`;
-  }).join("");
-
-  const legend = h(`<div class="lg">
-    ${Object.keys(STATUS).map(k => `<span><i style="background:${STATUS[k].color}"></i>${STATUS[k].ar}</span>`).join("")}
-    <span><i style="background:repeating-linear-gradient(135deg,#dc2626 0 3px,#fecaca 3px 6px)"></i>فترة تجاوز الاستحقاق</span>
-    <span><i style="width:0;height:0;border-radius:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid #1d2433"></i>تاريخ الاستحقاق</span>
-    <span><i style="border-radius:50%;background:#2563eb"></i>حدث مسجّل</span>
-    <span><i style="background:#15803d;border-radius:50%"></i>إقفال</span>
-    <span><i style="width:2px;background:#dc2626;border-radius:0"></i>اليوم</span>
-  </div>`);
-
-  return [secHead(ctx, "gantt", "المخطط الزمني الشامل", `من ${fmtLong(min)} إلى ${fmtLong(max)} · عرض ${monthly ? "شهري" : "أسبوعي"}`),
-    h(`<div class="gt" data-split data-cont="المخطط الزمني الشامل"><div class="split-head">${head}</div><div class="split-body">${rows}</div></div>`),
-    legend];
-}
-
-/* ---------- topic card ---------- */
-function topicCard(ctx, t, sectionKey, full) {
-  const today = todayISO();
-  let msg, pct = 0, col = "var(--p)";
-  if (t.dueDate) {
-    const totalD = Math.max(1, daysBetween(t.openDate, t.dueDate));
-    pct = Math.min(100, Math.max(2, daysBetween(t.openDate, endDate(t)) / totalD * 100));
-    if (t.status === "closed") {
-      const d = daysBetween(t.dueDate, t.closeDate);
-      msg = d <= 0 ? `أُقفل قبل الاستحقاق بـ ${-d} يوم` : `أُقفل بعد الاستحقاق بـ ${d} يوم`;
-      col = d <= 0 ? STATUS.closed.color : "#dc2626";
-    } else {
-      const d = daysBetween(today, t.dueDate);
-      msg = d < 0 ? `متأخر ${-d} يوم عن الاستحقاق` : `متبقٍ ${d} يوم على الاستحقاق`;
-      col = d < 0 ? "#dc2626" : pct > 75 ? STATUS.progress.color : "var(--p)";
-    }
-  } else {
-    msg = t.status === "closed" ? `أُقفل بعد ${ageDays(t)} يوم من الفتح` : `مفتوح منذ ${ageDays(t)} يوم (بدون تاريخ استحقاق)`;
-    pct = 100; col = t.status === "closed" ? STATUS.closed.color : "#94a3b8";
-  }
-  const descLen = full ? 1500 : 320;
-  const label = `${t.ref} – ${t.title}`;
-  return h(`<div class="tc" data-keep="1" ${sectionKey ? `data-topic-of="${sectionKey}"` : ""} data-topic-label="${esc(label)}">
-    <div class="tc-h"><span class="rf">${esc(t.ref)}</span><h3>${esc(t.title)}</h3>${statusPill(t)}${overduePill(t)}
-      <span class="pill ghost">أولوية ${PRIORITY[t.priority]}</span></div>
-    <div class="tc-b">
-      <div class="facts">
-        <div><span>التصنيف</span><b>${esc(t.category) || "—"}</b></div>
-        <div><span>الجهة ذات العلاقة</span><b>${esc(t.party) || "—"}</b></div>
-        <div><span>المسؤول</span><b>${esc(t.owner) || "—"}</b></div>
-        <div><span>عدد الأحداث</span><b>${t.events.length}</b></div>
-        <div><span>تاريخ الفتح</span><b>${fmt(t.openDate)}</b></div>
-        <div><span>تاريخ الاستحقاق</span><b>${fmt(t.dueDate)}</b></div>
-        <div><span>تاريخ الإقفال</span><b>${fmt(t.closeDate)}</b></div>
-        <div><span>المدة</span><b>${ageDays(t)} يوم</b></div>
-      </div>
-      <div><div class="tbar-msg" style="color:${col}">${msg}</div>
-        <div class="tbar-track"><div class="tbar-fill" style="width:${pct}%;background:${col}"></div></div>
-        <div class="tbar-lbls"><span>الفتح ${fmt(t.openDate)}</span><span>${t.dueDate ? "الاستحقاق " + fmt(t.dueDate) : "اليوم " + fmt(endDate(t))}</span></div></div>
-    </div>
-    ${t.description ? `<div class="tc-desc"><b>الخلفية: </b>${esc(clip(t.description, descLen))}</div>` : ""}
-    ${t.status === "closed" && t.closeNote ? `<div class="tc-desc ok"><b>نتيجة الإقفال: </b>${esc(clip(t.closeNote, descLen))}</div>` : ""}
-  </div>`);
-}
-
-/* ---------- horizontal timeline ---------- */
-function htlBlocks(ctx, topics) {
-  const N = ctx.orient === "landscape" ? 6 : 4;
-  const blocks = [secHead(ctx, "htl", "الخط الزمني الأفقي", "تسلسل الأحداث من الفتح (يمين) حتى الإقفال أو الوضع الحالي (يسار)")];
-  topics.forEach((t, ti) => {
-    if (!ctx.single) {
-      const card = topicCard(ctx, t, "htl");
-      if (ti && ctx.orient === "landscape") card.dataset.newpage = "1";
-      blocks.push(card);
-    }
-    const evs = eventsWithToday(t);
-    for (let r = 0; r < evs.length; r += N) {
-      const chunk = evs.slice(r, r + N);
-      const cols = 2 * N + 2;
-      let html = `<div class="ht" style="grid-template-columns:repeat(${cols},1fr)" data-cont="${esc(t.ref + " – " + t.title)}">
-        <div class="ht-line">${r === 0 ? `<span class="st"></span>` : ""}<span class="ar"></span></div>`;
-      chunk.forEach((e, j) => {
-        const m = evMeta(e.type), cs = 2 * j + 1, top = j % 2 === 0, isT = e.type === "today";
-        html += `<div class="ht-card ${top ? "top" : "bot"} ${isT ? "today" : ""}" style="--c:${m.color};grid-column:${cs}/${cs + 4}">
-            <span class="ht-stem"></span>
-            <div class="hd"><span class="t">${m.ar}</span><span class="d">${fmt(e.date)}</span></div>
-            <div class="x">${esc(clip(e.text, isT ? 200 : 140))}</div>${e.by ? `<div class="by">${esc(e.by)}</div>` : ""}</div>
-          <div class="ht-node ${isT ? "today" : ""}" style="--c:${m.color};grid-column:${cs + 1}/${cs + 3}">${icon(e.type, 14, isT ? m.color : "#fff")}</div>`;
-        const nx = chunk[j + 1];
-        if (nx) html += `<div class="ht-gap" style="grid-column:${cs + 2}/${cs + 4}">${daysBetween(e.date, nx.date)} يوم</div>`;
-      });
-      blocks.push(h(html + `</div>`));
-    }
-  });
-  return blocks;
-}
-
-/* ---------- vertical detailed timeline ---------- */
-function vtlBlocks(ctx, topics) {
-  const blocks = [secHead(ctx, "vtl", "الخط الزمني التفصيلي", "كل الأحداث بنصها الكامل مجمّعة حسب الشهر")];
-  topics.forEach(t => {
-    if (!ctx.single) blocks.push(topicCard(ctx, t, "vtl"));
-    const evs = eventsWithToday(t);
-    const contTxt = t.ref + " – " + t.title;
-    let month = "";
-    evs.forEach((e, i) => {
-      const [y, m, d] = e.date.split("-").map(Number);
-      if (e.date.slice(0, 7) !== month) {
-        month = e.date.slice(0, 7);
-        blocks.push(h(`<div class="vt-month" data-keep="1" data-cont="${esc(contTxt)}"><span>${AR_MONTHS[m - 1]} ${y}</span><i></i></div>`));
-      }
-      const meta = evMeta(e.type), isT = e.type === "today";
-      const info = i === 0 ? "بداية الموضوع"
-        : `${daysBetween(evs[i - 1].date, e.date)} يوم منذ الحدث السابق · اليوم ${daysBetween(t.openDate, e.date)} من عمر الموضوع`;
-      blocks.push(h(`<div class="vt-ev" data-cont="${esc(contTxt)}">
-        <div class="vt-date"><b>${d}</b><span>${AR_MONTHS[m - 1]} ${y}</span></div>
-        <div class="vt-rail"><span class="vt-line"></span><div class="vt-node ${isT ? "today" : ""}" style="--c:${meta.color}">${icon(e.type, 13, isT ? meta.color : "#fff")}</div></div>
-        <div class="vt-card ${isT ? "today" : ""}" style="--c:${meta.color}"><div class="h"><span class="t">${meta.ar}</span>${e.by ? `<span class="by">· ${esc(e.by)}</span>` : ""}<span class="meta">${info}</span></div>
-          <div class="x">${esc(e.text)}</div></div></div>`));
-    });
-  });
-  return blocks;
-}
-
-/* ---------- single-topic overview ---------- */
-function overviewBlocks(ctx, t) {
-  const evs = sortedEvents(t);
-  const gaps = evs.slice(1).map((e, i) => daysBetween(evs[i].date, e.date));
-  if (t.status !== "closed" && evs.length) gaps.push(daysBetween(evs[evs.length - 1].date, todayISO()));
-  const avgGap = gaps.length ? Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length) : 0;
-  const maxGap = gaps.length ? Math.max(...gaps) : 0;
-  const since = daysBetween(lastEvent(t).date, todayISO());
-  const kpi = (v, l, c = "var(--p)") => `<div class="kpi" style="--kc:${c}"><div class="v" style="color:${c}">${v}</div><div class="l">${l}</div></div>`;
-  const types = {};
-  evs.forEach(e => types[e.type] = (types[e.type] || 0) + 1);
-  return [
-    secHead(ctx, "overview", "بطاقة الموضوع", "البيانات الأساسية ومؤشرات المتابعة"),
-    topicCard(ctx, t, null, true),
-    h(`<div class="mini">
-      ${kpi(evs.length, "عدد الأحداث")}
-      ${kpi(`${ageDays(t)} <small>يوم</small>`, t.status === "closed" ? "مدة المعالجة" : "العمر حتى اليوم")}
-      ${kpi(`${avgGap} <small>يوم</small>`, "متوسط الفاصل بين الأحداث")}
-      ${kpi(`${maxGap} <small>يوم</small>`, "أطول فترة بدون تحديث", maxGap > 14 ? "#b45309" : "var(--p)")}
-      ${kpi(t.status === "closed" ? "—" : `${since} <small>يوم</small>`, "منذ آخر تحديث", since > 14 && t.status !== "closed" ? "#b45309" : "var(--p)")}
-    </div>`),
-    h(`<div class="card"><h4>أنواع الأحداث المسجلة</h4><div class="chips">${Object.entries(types).map(([k, n]) =>
-      `<span class="chip"><i style="background:${EVT[k].color}">${icon(k, 10)}</i>${EVT[k].ar} <b>${n}</b></span>`).join("")}</div></div>`),
-  ];
-}
+const DEFAULT_SETTINGS = {
+  org: "", dept: "", reportTitle: "تقرير متابعة المواضيع", preparedBy: "", period: "",
+  classification: "داخلي", footer: "", logo: "", docNo: "",
+  sigPrep: "", sigReview: "", sigApprove: "",
+  customColors: false, primary: "#0e4d3a", accent: "#a8853a",
+};
+const THEMES = [
+  ["أخضر وذهبي", "#0e4d3a", "#a8853a"],
+  ["كحلي وأزرق", "#0b1f3a", "#2251ff"],
+  ["كحلي وذهبي", "#1f3a5f", "#b8913a"],
+  ["عنابي", "#6d1f37", "#c19a5b"],
+  ["فيروزي", "#0f5e63", "#e09a3b"],
+  ["فحمي", "#2b2f36", "#c9a227"],
+];
+const rs = () => ({ ...DEFAULT_SETTINGS, ...(db.settings || {}) });
 
 /* =====================================================================
-   Build / preview / export
+   Report dialog / build / preview / export
    ===================================================================== */
 const RP = { topics: null, single: false, opts: null, ctx: null, pages: [] };
+const OPTS_KEY = "topicTracker.reportOpts.v2";
 
 function loadOpts() {
   let o = {};
   try { o = JSON.parse(localStorage.getItem(OPTS_KEY) || "{}"); } catch (e) { /* ignore */ }
-  return { orient: o.orient || "landscape", sections: o.sections || Object.fromEntries(MULTI_KEYS.map(k => [k, true])) };
+  return { tpl: TPL[o.tpl] ? o.tpl : "formal", summary: o.summary !== false, details: o.details !== false, signatures: o.signatures !== false };
 }
 
 function openReportDialog(topics) {
   RP.single = !!topics;
   RP.topics = topics || filteredTopics();
   if (!RP.topics.length) { alert("لا توجد مواضيع ضمن التصفية الحالية."); return; }
-  const o = loadOpts();
-  const keys = RP.single ? SINGLE_KEYS : MULTI_KEYS;
+  const o = loadOpts(), f = $("#reportForm");
   $("#reportFormTitle").textContent = RP.single ? `تقرير PDF للموضوع ${RP.topics[0].ref}` : "إعداد تقرير PDF";
-  $("#reportScope").textContent = RP.single ? RP.topics[0].title : `النطاق: ${scopeLabel()} (${RP.topics.length} موضوع)`;
-  $("#reportSections").innerHTML = (RP.single ? `<label><input type="checkbox" checked disabled><span>بطاقة الموضوع<small>البيانات الأساسية ومؤشرات المتابعة</small></span></label>` : "") +
-    keys.map(k => `<label><input type="checkbox" name="sec" value="${k}" ${o.sections[k] !== false ? "checked" : ""}>
-      <span>${SECTION_DEFS[k][0]}<small>${SECTION_DEFS[k][1]}</small></span></label>`).join("");
-  $("#reportForm").orient.value = o.orient;
+  $("#reportScope").textContent = RP.single ? RP.topics[0].title : `النطاق: ${scopeLabel()} (${topicsN(RP.topics.length)})`;
+  $("#tplList").innerHTML = Object.values(TPL).map(t => `<label class="tpl-card">
+      <input type="radio" name="tpl" value="${t.key}" ${t.key === o.tpl ? "checked" : ""}>
+      <span class="tpl-sw">${t.swatch}</span><span class="tpl-tx"><b>${t.name}</b><small>${t.desc}</small></span></label>`).join("");
+  f.summary.checked = o.summary; f.details.checked = o.details; f.signatures.checked = o.signatures;
+  $("#optSummary").classList.toggle("hidden", RP.single);
   $("#dlgReport").showModal();
 }
 
 $("#reportForm").addEventListener("submit", ev => {
   if (ev.submitter?.value !== "ok") return;
   const f = ev.target;
-  const o = loadOpts();
-  f.querySelectorAll('input[name="sec"]').forEach(c => o.sections[c.value] = c.checked);
-  o.orient = f.orient.value;
+  const o = { tpl: f.tpl.value, summary: f.summary.checked, details: f.details.checked, signatures: f.signatures.checked };
+  if (!RP.single && !o.summary && !o.details) { ev.preventDefault(); alert("اختر محتوى واحداً على الأقل."); return; }
   try { localStorage.setItem(OPTS_KEY, JSON.stringify(o)); } catch (e) { /* ignore */ }
   RP.opts = o;
   showPreview();
 });
 
 async function showPreview() {
-  const ov = $("#rpOverlay");
-  ov.classList.add("show");
+  $("#rpOverlay").classList.add("show");
   document.body.style.overflow = "hidden";
   setBusy(true, "جاري تجهيز الصفحات…");
-  await document.fonts.load("400 12px 'Plex Arabic'");
-  await document.fonts.load("700 12px 'Plex Arabic'");
+  await Promise.all(["400 12px 'Plex Arabic'", "700 12px 'Plex Arabic'", "700 12px Naskh", "400 12px Naskh", "800 12px Tajawal", "700 12px Tajawal"].map(f => document.fonts.load(f)));
   await document.fonts.ready;
   await new Promise(r => requestAnimationFrame(r));
   try {
     buildReport();
-    setBusy(false, `${RP.pages.length} صفحة`);
+    setBusy(false, `${RP.pages.length} صفحة · ${TPL[RP.opts.tpl].name}`);
   } catch (e) {
     console.error(e);
     setBusy(false, "تعذر إنشاء التقرير: " + e.message);
@@ -641,49 +353,39 @@ async function showPreview() {
 }
 
 function buildReport() {
-  const S = rs(), topics = RP.topics, single = RP.single, sec = RP.opts.sections;
-  const on = k => sec[k] !== false;
+  const S = rs(), tpl = TPL[RP.opts.tpl], topics = RP.topics, single = RP.single;
   const ctx = {
-    S, single, orient: RP.opts.orient, secNo: 0, sections: [], tocEl: null,
-    title: single ? `${S.reportTitle} – ${topics[0].ref}` : S.reportTitle,
+    S, single, opts: RP.opts, topics,
+    title: single ? `بيان متابعة موضوع ${topics[0].ref}` : S.reportTitle,
+    period: S.period || `حتى ${fmtLong(todayISO())}`,
   };
   RP.ctx = ctx;
   const stage = $("#rpStage");
   stage.replaceChildren();
   $("#rpTitle").textContent = single ? `معاينة تقرير ${topics[0].ref}` : "معاينة التقرير";
-  const P = new Pager(stage, ctx);
-
-  if (on("cover")) coverPage(P, ctx, topics);
-  if (!single && on("toc")) tocBlocks(ctx).forEach(b => P.add(b));
+  const P = new Pager(stage, ctx, tpl);
 
   const blocks = [];
-  if (single) {
-    blocks.push(...overviewBlocks(ctx, topics[0]));
-  } else {
-    if (on("dash")) blocks.push(...dashBlocks(ctx, topics));
-    if (on("table")) blocks.push(...tableBlocks(ctx, topics));
-    if (on("gantt")) blocks.push(...ganttBlocks(ctx, topics));
-  }
-  if (on("htl")) blocks.push(...htlBlocks(ctx, topics));
-  if (on("vtl")) blocks.push(...vtlBlocks(ctx, topics));
-  if (!single) ctx.topicIndexSection = on("htl") ? "htl" : on("vtl") ? "vtl" : null;
+  if (!single && RP.opts.summary) blocks.push(...tpl.summary(ctx, topics));
+  if (single || RP.opts.details) topics.forEach((t, i) => blocks.push(...tpl.topic(ctx, t, i)));
+  if (tpl.closing) blocks.push(...tpl.closing(ctx));
   blocks.forEach(b => P.add(b));
   if (!P.pages.length) P.page();
 
   RP.pages = P.pages;
-  fillToc(ctx, P.pages);
-  P.pages.forEach((pg, i) => { const n = pg.querySelector(".num"); if (n) n.textContent = `صفحة ${i + 1} من ${P.pages.length}`; });
+  P.pages.forEach((pg, i) => {
+    pg.querySelectorAll(".pg-n").forEach(n => n.textContent = i + 1);
+    pg.querySelectorAll(".pg-t").forEach(n => n.textContent = P.pages.length);
+  });
   fitPreview();
 }
 
 function fitPreview() {
   const stage = $("#rpStage");
   if (!RP.pages.length) return;
-  const land = RP.opts.orient === "landscape";
-  const W = land ? 1123 : 794, H = land ? 794 : 1123;
-  const s = Math.min(1, (stage.clientWidth - 24) / W);
+  const s = Math.min(1, (stage.clientWidth - 24) / PG_W);
   stage.querySelectorAll(".pg-wrap").forEach(w => {
-    w.style.width = W * s + "px"; w.style.height = H * s + "px";
+    w.style.width = PG_W * s + "px"; w.style.height = PG_H * s + "px";
     w.firstElementChild.style.transform = `scale(${s})`;
   });
 }
@@ -701,74 +403,71 @@ function closePreview() {
 }
 
 function reportFileName() {
-  return RP.single ? `تقرير-${RP.topics[0].ref}-${todayISO()}.pdf` : `تقرير-متابعة-المواضيع-${todayISO()}.pdf`;
+  // Latin file names: some browsers drop non-Latin download names (file saved as "download" without extension)
+  return RP.single ? `Topic-${RP.topics[0].ref}-Report-${todayISO()}` : `Topics-Report-${todayISO()}`;
 }
 
-async function downloadPdf() {
-  if (typeof htmlToImage === "undefined" || !window.jspdf) { alert("مكتبات PDF غير محمّلة (مجلد lib)."); return; }
-  const land = RP.opts.orient === "landscape";
-  const W = land ? 297 : 210, H = land ? 210 : 297;
-  const S = RP.ctx.S;
-  const pdf = new window.jspdf.jsPDF({ orientation: land ? "landscape" : "portrait", unit: "mm", format: "a4", compress: true });
-  setBusy(true);
-  try {
-    for (let i = 0; i < RP.pages.length; i++) {
-      $("#rpProg").textContent = `جاري إنشاء ملف PDF… صفحة ${i + 1} من ${RP.pages.length}`;
-      const url = await htmlToImage.toJpeg(RP.pages[i], {
-        pixelRatio: 2.2, quality: 0.92, backgroundColor: "#ffffff",
-        fontEmbedCSS: window.EMBEDDED_FONT_CSS || "",
-      });
-      if (i) pdf.addPage("a4", land ? "landscape" : "portrait");
-      pdf.addImage(url, "JPEG", 0, 0, W, H, undefined, "FAST");
-    }
-    pdf.setProperties({ title: RP.ctx.title, subject: RP.ctx.title, author: S.preparedBy || S.org || "", creator: "نظام متابعة المواضيع" });
-    download(pdf.output("blob"), reportFileName());
-    setBusy(false, "تم تنزيل ملف PDF ✓");
-  } catch (e) {
-    console.error(e);
-    setBusy(false, "تعذر إنشاء PDF – استخدم زر الطباعة ثم «حفظ كـ PDF».");
-  }
-}
-
+/* vector PDF through the browser's print dialog ("Save as PDF") */
 function printPages() {
-  let st = $("#rpPageSize");
-  if (!st) { st = document.createElement("style"); st.id = "rpPageSize"; document.head.appendChild(st); }
-  st.textContent = `@page { size: A4 ${RP.opts.orient}; margin: 0; }`;
   const old = document.title;
-  document.title = reportFileName().replace(/\.pdf$/, "");
+  document.title = reportFileName();
   window.addEventListener("afterprint", () => { document.title = old; }, { once: true });
   window.print();
 }
 
+/* one-click image PDF */
+async function downloadImagePdf() {
+  if (typeof htmlToImage === "undefined" || !window.jspdf) { alert("مكتبات PDF غير محمّلة (مجلد lib)."); return; }
+  const S = RP.ctx.S;
+  const pdf = new window.jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: "a4", compress: true });
+  setBusy(true);
+  try {
+    for (let i = 0; i < RP.pages.length; i++) {
+      $("#rpProg").textContent = `جاري إنشاء ملف PDF… صفحة ${i + 1} من ${RP.pages.length}`;
+      const url = await htmlToImage.toJpeg(RP.pages[i], { pixelRatio: 2.2, quality: 0.92, backgroundColor: "#ffffff", fontEmbedCSS: window.EMBEDDED_FONT_CSS || "" });
+      if (i) pdf.addPage("a4", "landscape");
+      pdf.addImage(url, "JPEG", 0, 0, 297, 210, undefined, "FAST");
+    }
+    pdf.setProperties({ title: RP.ctx.title, subject: RP.ctx.title, author: S.preparedBy || S.org || "", creator: "نظام متابعة المواضيع" });
+    download(pdf.output("blob"), reportFileName() + ".pdf");
+    setBusy(false, "تم تنزيل ملف PDF ✓");
+  } catch (e) {
+    console.error(e);
+    setBusy(false, "تعذر إنشاء الملف – استخدم «حفظ PDF».");
+  }
+}
+
 $("#btnPdf").onclick = () => openReportDialog();
 $("#rpClose").onclick = closePreview;
-$("#rpDownload").onclick = downloadPdf;
 $("#rpPrint").onclick = printPages;
+$("#rpDownload").onclick = downloadImagePdf;
 $("#rpEdit").onclick = () => { closePreview(); openReportDialog(RP.single ? RP.topics : null); };
 document.addEventListener("keydown", e => { if (e.key === "Escape" && $("#rpOverlay").classList.contains("show") && !document.querySelector("dialog[open]")) closePreview(); });
 
 /* =====================================================================
-   Branding settings
+   Branding settings dialog
    ===================================================================== */
+const SETTING_KEYS = ["org", "dept", "reportTitle", "period", "preparedBy", "classification", "footer", "docNo", "sigPrep", "sigReview", "sigApprove", "primary", "accent"];
 let pendingLogo = "";
 
 function openSettingsDialog() {
   const S = rs(), f = $("#settingsForm");
-  ["org", "dept", "reportTitle", "preparedBy", "classification", "footer", "primary", "accent"].forEach(k => f[k].value = S[k]);
+  SETTING_KEYS.forEach(k => f[k].value = S[k]);
+  f.customColors.checked = !!S.customColors;
   pendingLogo = S.logo;
   renderLogoPrev();
   $("#themeList").innerHTML = THEMES.map(([n, p, a]) =>
     `<button type="button" data-p="${p}" data-a="${a}"><i style="background:${p}"></i><i style="background:${a}"></i>${n}</button>`).join("");
+  syncColorFields();
   $("#dlgSettings").showModal();
 }
+function syncColorFields() { $("#colorFields").classList.toggle("dim", !$("#settingsForm").customColors.checked); }
+function renderLogoPrev() { $("#logoPrev").innerHTML = pendingLogo ? `<img src="${pendingLogo}" alt="">` : "لا يوجد"; }
 
-function renderLogoPrev() {
-  $("#logoPrev").innerHTML = pendingLogo ? `<img src="${pendingLogo}" alt="">` : "لا يوجد";
-}
-
+$("#settingsForm").customColors.addEventListener("change", syncColorFields);
 $("#themeList").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
-  const f = $("#settingsForm"); f.primary.value = b.dataset.p; f.accent.value = b.dataset.a;
+  const f = $("#settingsForm"); f.primary.value = b.dataset.p; f.accent.value = b.dataset.a; f.customColors.checked = true; syncColorFields();
 });
 $("#btnLogo").onclick = () => $("#fileLogo").click();
 $("#btnLogoDel").onclick = () => { pendingLogo = ""; renderLogoPrev(); };
@@ -796,8 +495,9 @@ $("#fileLogo").onchange = e => {
 $("#settingsForm").addEventListener("submit", ev => {
   if (ev.submitter?.value !== "ok") return;
   const f = ev.target;
-  db.settings = Object.fromEntries(["org", "dept", "reportTitle", "preparedBy", "classification", "footer", "primary", "accent"].map(k => [k, f[k].value.trim()]));
+  db.settings = Object.fromEntries(SETTING_KEYS.map(k => [k, f[k].value.trim()]));
   if (!db.settings.reportTitle) db.settings.reportTitle = DEFAULT_SETTINGS.reportTitle;
+  db.settings.customColors = f.customColors.checked;
   db.settings.logo = pendingLogo;
   save();
   toast("تم حفظ هوية التقرير");

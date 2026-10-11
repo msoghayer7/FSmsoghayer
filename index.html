@@ -141,6 +141,9 @@
   .field label { font-size: 13px; color: var(--muted); }
   .field textarea { min-height: 90px; resize: vertical; }
   .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .row > *, .field > input, .field > select, .field > textarea { min-width: 0; }
+  .field > input, .field > select, .field > textarea, .row > input { width: 100%; }
+  dialog { max-height: 92vh; }
 
   /* modal */
   dialog { border: none; border-radius: 12px; padding: 0; width: min(620px, 94vw); box-shadow: 0 20px 50px rgba(0,0,0,.25); }
@@ -155,6 +158,9 @@
   .hidden { display: none !important; }
   .muted { color: var(--muted); }
 
+  details.more { border: 1px dashed var(--line); border-radius: 8px; padding: 6px 10px; margin-bottom: 8px; }
+  details.more summary { cursor: pointer; color: var(--brand); font-size: 14px; }
+  details.more[open] summary { margin-bottom: 8px; }
   .opt-list label { display: flex; gap: 8px; align-items: flex-start; padding: 5px 0; cursor: pointer; }
   .opt-list label small { display: block; color: var(--muted); font-size: 12px; }
   .seg { display: flex; gap: 16px; flex-wrap: wrap; }
@@ -165,6 +171,8 @@
   .themes { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
   .themes button { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 4px 10px; cursor: pointer; display: flex; gap: 6px; align-items: center; font-size: 13px; }
   .themes i { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+  .chk { display: flex; gap: 6px; align-items: center; font-size: 14px; margin-bottom: 6px; cursor: pointer; }
+  #settingsForm .row input { border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; }
   .colors { display: flex; gap: 16px; flex-wrap: wrap; }
   .colors label { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }
   .colors input[type=color] { width: 44px; height: 30px; border: 1px solid var(--line); border-radius: 6px; padding: 2px; background: #fff; }
@@ -264,6 +272,12 @@
     <div class="field" id="statusField"><label>الحالة</label>
       <select name="status"><option value="open">مفتوح</option><option value="progress">قيد الإجراء</option><option value="hold">معلّق</option></select>
     </div>
+    <details class="more">
+      <summary>حقول إضافية تظهر في التقارير (اختيارية)</summary>
+      <div class="field"><label>الخطوات التالية (كل خطوة في سطر)</label><textarea name="nextSteps" rows="3"></textarea></div>
+      <div class="field"><label>المخاطر (كل خطر في سطر)</label><textarea name="risks" rows="2"></textarea></div>
+      <div class="field"><label>القرار / التوجيه المطلوب من الإدارة</label><textarea name="decision" rows="2"></textarea></div>
+    </details>
     <div class="dlg-actions">
       <button type="button" class="btn" data-close>إلغاء</button>
       <button class="btn primary" value="ok">حفظ</button>
@@ -291,11 +305,12 @@
   <form id="reportForm" method="dialog" autocomplete="off">
     <h3 id="reportFormTitle">إعداد تقرير PDF</h3>
     <p class="muted" id="reportScope" style="margin-top:-6px"></p>
-    <div class="field"><label>محتويات التقرير</label><div class="opt-list" id="reportSections"></div></div>
-    <div class="field"><label>اتجاه الصفحة</label>
-      <div class="seg">
-        <label><input type="radio" name="orient" value="landscape"> أفقي (الأنسب للمخططات الزمنية)</label>
-        <label><input type="radio" name="orient" value="portrait"> عمودي</label>
+    <div class="field"><label>أسلوب التقرير</label><div class="tpl-list" id="tplList"></div></div>
+    <div class="field"><label>المحتوى</label>
+      <div class="opt-list">
+        <label id="optSummary"><input type="checkbox" name="summary"><span>الملخص التنفيذي<small>المؤشرات والمخطط الزمني لكل المواضيع وأبرز المستجدات</small></span></label>
+        <label><input type="checkbox" name="details"><span>بيان تفصيلي لكل موضوع<small>صفحة لكل موضوع: بياناته ومساره الزمني وسجل إجراءاته</small></span></label>
+        <label><input type="checkbox" name="signatures"><span>خانات التوقيع (إعداد / مراجعة / اعتماد)<small>في نهاية التقرير – الأسلوب الرسمي</small></span></label>
       </div>
     </div>
     <div class="dlg-actions">
@@ -317,13 +332,24 @@
     </div>
     <div class="row">
       <div class="field"><label>عنوان التقرير</label><input name="reportTitle"></div>
+      <div class="field"><label>الفترة (مثال: الربع الثالث 2026)</label><input name="period"></div>
+    </div>
+    <div class="row">
       <div class="field"><label>إعداد</label><input name="preparedBy"></div>
+      <div class="field"><label>رقم التقرير (للأسلوب الرسمي)</label><input name="docNo"></div>
     </div>
     <div class="row">
       <div class="field"><label>تصنيف السرية</label>
         <select name="classification"><option value="">بدون</option><option>عام</option><option>داخلي</option><option>سري</option><option>سري للغاية</option></select>
       </div>
       <div class="field"><label>نص التذييل (اختياري)</label><input name="footer"></div>
+    </div>
+    <div class="field"><label>أسماء خانات التوقيع</label>
+      <div class="row" style="grid-template-columns:1fr 1fr 1fr">
+        <input name="sigPrep" placeholder="إعداد">
+        <input name="sigReview" placeholder="مراجعة">
+        <input name="sigApprove" placeholder="اعتماد">
+      </div>
     </div>
     <div class="field"><label>الشعار</label>
       <div class="logo-row">
@@ -334,10 +360,13 @@
       </div>
     </div>
     <div class="field"><label>الألوان</label>
+      <label class="chk"><input type="checkbox" name="customColors"> استخدام ألوان الجهة بدل ألوان القالب الافتراضية</label>
+      <div id="colorFields">
       <div class="themes" id="themeList"></div>
       <div class="colors">
         <label>اللون الأساسي <input type="color" name="primary"></label>
         <label>اللون الثانوي <input type="color" name="accent"></label>
+      </div>
       </div>
     </div>
     <div class="dlg-actions">
@@ -352,8 +381,8 @@
   <div class="rp-bar">
     <span class="ttl" id="rpTitle">معاينة التقرير</span>
     <span class="prog" id="rpProg"></span>
-    <button class="btn primary" id="rpDownload">⬇ تنزيل PDF</button>
-    <button class="btn" id="rpPrint">🖨 طباعة</button>
+    <button class="btn primary" id="rpPrint" title="يفتح نافذة الطباعة: اختر «حفظ كـ PDF» – نص قابل للنسخ وجودة عالية">💾 حفظ PDF / طباعة</button>
+    <button class="btn" id="rpDownload" title="تنزيل مباشر كصور (النص غير قابل للنسخ)">⬇ تنزيل سريع (صورة)</button>
     <button class="btn" id="rpEdit">⚙ تعديل الخيارات</button>
     <button class="btn" id="rpClose">✕ إغلاق</button>
   </div>
@@ -472,6 +501,9 @@ function createTopic(data) {
     dueDate: data.dueDate || "",
     closeDate: "",
     closeNote: "",
+    nextSteps: data.nextSteps || "",
+    risks: data.risks || "",
+    decision: data.decision || "",
     events: [],
   };
   addEvent(t, { date: t.openDate, type: "create", text: "تسجيل الموضوع" + (t.description ? ": " + t.description : "") });
@@ -688,7 +720,7 @@ function openTopicDialog(id) {
   $("#topicFormTitle").textContent = t ? `تعديل الموضوع ${t.ref}` : "موضوع جديد";
   $("#statusField").classList.toggle("hidden", !!(t && t.status === "closed"));
   if (t) {
-    ["title", "description", "category", "party", "owner", "priority", "openDate", "dueDate"].forEach(k => f[k].value = t[k] || "");
+    ["title", "description", "category", "party", "owner", "priority", "openDate", "dueDate", "nextSteps", "risks", "decision"].forEach(k => f[k].value = t[k] || "");
     if (t.status !== "closed") f.status.value = t.status;
   } else {
     f.openDate.value = todayISO();
@@ -700,11 +732,11 @@ function openTopicDialog(id) {
 $("#topicForm").addEventListener("submit", ev => {
   if (ev.submitter?.value !== "ok") return;
   const f = ev.target;
-  const data = Object.fromEntries(["title", "description", "category", "party", "owner", "priority", "openDate", "dueDate", "status"].map(k => [k, f[k].value.trim()]));
+  const data = Object.fromEntries(["title", "description", "category", "party", "owner", "priority", "openDate", "dueDate", "status", "nextSteps", "risks", "decision"].map(k => [k, f[k].value.trim()]));
   if (editingTopicId) {
     const t = getTopic(editingTopicId);
     const oldStatus = t.status;
-    ["title", "description", "category", "party", "owner", "priority", "dueDate"].forEach(k => t[k] = data[k]);
+    ["title", "description", "category", "party", "owner", "priority", "dueDate", "nextSteps", "risks", "decision"].forEach(k => t[k] = data[k]);
     if (data.openDate !== t.openDate) {
       t.openDate = data.openDate;
       const ce = t.events.find(e => e.type === "create"); if (ce) ce.date = data.openDate;
@@ -780,7 +812,7 @@ $("#btnNew").onclick = () => openTopicDialog();
 
 /* ================= backup / restore ================= */
 $("#btnBackup").onclick = () => {
-  download(new Blob([JSON.stringify(db, null, 2)], { type: "application/json" }), `مواضيع-نسخة-احتياطية-${todayISO()}.json`);
+  download(new Blob([JSON.stringify(db, null, 2)], { type: "application/json" }), `topics-backup-${todayISO()}.json`);
 };
 $("#btnRestore").onclick = () => $("#fileRestore").click();
 $("#fileRestore").onchange = async e => {
@@ -884,7 +916,7 @@ async function exportExcel(topics) {
   buildGanttSheet(wb, topics);
 
   const buf = await wb.xlsx.writeBuffer();
-  const name = single ? `المخطط-الزمني-${topics[0].ref}-${todayISO()}.xlsx` : `متابعة-المواضيع-${todayISO()}.xlsx`;
+  const name = single ? `Topic-${topics[0].ref}-Timeline-${todayISO()}.xlsx` : `Topics-Timeline-${todayISO()}.xlsx`;
   download(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), name);
   toast("تم تصدير ملف Excel");
 }
@@ -977,16 +1009,26 @@ function loadDemo() {
     else if (evs.length) t.status = "progress";
     return t;
   };
-  mk({ title: "تجديد عقد صيانة المبنى الرئيسي", category: "عقود", party: "إدارة المشتريات", owner: "أحمد", priority: "high", openDate: d(-40), dueDate: d(-5),
-       description: "انتهاء عقد الصيانة الحالي ويلزم الطرح والترسية قبل نهاية الربع." },
-     [[-35, "letter", "إرسال خطاب لإدارة المشتريات بطلب الطرح", "أحمد"], [-28, "meeting", "اجتماع مع المشتريات لمراجعة كراسة الشروط"],
-      [-15, "action", "طرح المنافسة واستقبال 3 عروض"], [-6, "followup", "متابعة التقييم الفني – بانتظار اللجنة"]]);
-  mk({ title: "معالجة ملاحظات المراجعة الداخلية", category: "مراجعة", party: "المراجعة الداخلية", owner: "سارة", priority: "medium", openDate: d(-60), dueDate: d(-10) },
+  mk({ title: "تجديد عقد صيانة المبنى الرئيسي", category: "عقود", party: "إدارة المشتريات", owner: "أحمد العتيبي", priority: "high", openDate: d(-40), dueDate: d(-5),
+       description: "انتهاء عقد الصيانة الحالي ويلزم الطرح والترسية قبل نهاية الربع لضمان استمرارية الخدمة.",
+       nextSteps: "انعقاد لجنة الفحص واعتماد التقييم الفني\nالتقييم المالي والترسية على أفضل العروض\nتوقيع العقد وتسليم الموقع للمقاول",
+       risks: "انقطاع خدمات الصيانة بعد انتهاء العقد الحالي\nتأخر إضافي إن لم تنعقد اللجنة هذا الأسبوع",
+       decision: "عقد اجتماع لجنة الفحص هذا الأسبوع لترسية عقد الصيانة" },
+     [[-35, "letter", "إرسال خطاب لإدارة المشتريات بطلب طرح المنافسة", "أحمد العتيبي"], [-28, "meeting", "اجتماع مع المشتريات لمراجعة كراسة الشروط واعتماد نطاق العمل", "لجنة العقود"],
+      [-15, "action", "طرح المنافسة واستقبال ثلاثة عروض من المقاولين المؤهلين", "إدارة المشتريات"], [-6, "followup", "متابعة التقييم الفني للعروض – بانتظار اجتماع لجنة الفحص", "أحمد العتيبي"]]);
+  mk({ title: "معالجة ملاحظات المراجعة الداخلية", category: "حوكمة", party: "المراجعة الداخلية", owner: "سارة القحطاني", priority: "medium", openDate: d(-60), dueDate: d(-10) },
      [[-55, "update", "استلام تقرير الملاحظات (7 ملاحظات)"], [-42, "action", "معالجة 4 ملاحظات ورفع الشواهد"],
       [-25, "decision", "اعتماد خطة معالجة الملاحظات المتبقية"]], [-12, "تمت معالجة جميع الملاحظات وإغلاقها من المراجعة الداخلية"]);
-  mk({ title: "طلب ربط النظام مع الجهة الخارجية", category: "تقنية", party: "تقنية المعلومات", owner: "خالد", priority: "high", openDate: d(-20), dueDate: d(15) },
+  mk({ title: "ربط النظام مع الجهة الخارجية", category: "تقنية", party: "تقنية المعلومات", owner: "خالد الشهري", priority: "high", openDate: d(-20), dueDate: d(15),
+       nextSteps: "تنفيذ اختبارات التكامل على بيئة الاختبار\nاعتماد نتائج الاختبار والانتقال للتشغيل الفعلي" },
      [[-18, "letter", "مراسلة الجهة لطلب وثائق الربط"], [-9, "meeting", "اجتماع فني مع فريق الجهة"], [-2, "update", "استلام بيئة الاختبار"]]);
-  mk({ title: "تحديث سياسة العمل عن بعد", category: "موارد بشرية", owner: "نورة", priority: "low", openDate: d(-8) }, []);
+  const hold = mk({ title: "توريد أجهزة الحاسب للفرع الجديد", category: "مشتريات", party: "الشؤون المالية", owner: "فهد الدوسري", priority: "medium", openDate: d(-52), dueDate: d(9),
+       decision: "البت في ميزانية أجهزة الفرع الجديد قبل موعد الاستحقاق" },
+     [[-39, "action", "إعداد المواصفات الفنية"], [-13, "followup", "تعليق الطلب بانتظار اعتماد الميزانية"]]);
+  hold.status = "hold";
+  mk({ title: "تحديث سياسة العمل عن بعد", category: "موارد بشرية", party: "الموارد البشرية", owner: "نورة الحربي", priority: "low", openDate: d(-8), dueDate: d(35) }, []);
+  mk({ title: "تجهيز قاعة التدريب", category: "مرافق", party: "الخدمات العامة", owner: "سارة القحطاني", priority: "low", openDate: d(-88), dueDate: d(-41) },
+     [[-74, "action", "توريد الأثاث والتجهيزات"]], [-44, "تسليم القاعة وتشغيلها"]);
   save(); renderList(); toast("تم تحميل بيانات تجريبية");
 }
 
@@ -997,5 +1039,8 @@ function loadDemo() {
 })();
 </script>
 <script src="report.js"></script>
+<script src="tpl-formal.js"></script>
+<script src="tpl-consult.js"></script>
+<script src="tpl-modern.js"></script>
 </body>
 </html>
