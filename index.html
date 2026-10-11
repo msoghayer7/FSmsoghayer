@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>متابعة المواضيع</title>
+<script src="lib/fonts.js"></script>
+<link rel="stylesheet" href="report.css">
 <style>
   :root {
     --bg: #f4f6f9;
@@ -25,7 +27,7 @@
   body {
     background: var(--bg);
     color: var(--ink);
-    font-family: "Segoe UI", Tahoma, "Noto Sans Arabic", Arial, sans-serif;
+    font-family: "Plex Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
     font-size: 15px;
     line-height: 1.6;
   }
@@ -153,51 +155,19 @@
   .hidden { display: none !important; }
   .muted { color: var(--muted); }
 
-  /* ---------- print report (PDF) ---------- */
-  #report { display: none; }
-  @page { size: A4; margin: 14mm 12mm; }
-  @media print {
-    body { background: #fff; font-size: 11.5px; }
-    #app, header.top, .toast, dialog { display: none !important; }
-    #report { display: block; }
-    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  }
-  .rp-head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid var(--brand); padding-bottom: 6px; margin-bottom: 10px; }
-  .rp-head h1 { margin: 0; color: var(--brand); font-size: 20px; }
-  .rp-head .sub { color: var(--muted); font-size: 11px; }
-  .rp-stats { display: flex; gap: 8px; margin: 8px 0 12px; }
-  .rp-stats div { flex: 1; border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; text-align: center; }
-  .rp-stats b { display: block; font-size: 16px; }
-  #report h2 { font-size: 14px; color: var(--brand); margin: 14px 0 6px; }
-  #report table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
-  #report th, #report td { border: 1px solid #cfd6e0; padding: 3px 5px; text-align: right; vertical-align: top; }
-  #report th { background: var(--brand); color: #fff; }
-  #report tr:nth-child(even) td { background: #f6f8fb; }
-
-  /* Gantt overview in the report */
-  .gantt { border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
-  .g-axis, .g-row { display: grid; grid-template-columns: 170px 1fr; align-items: center; gap: 6px; }
-  .g-row { min-height: 20px; border-top: 1px dashed #eef1f5; }
-  .g-label { font-size: 10px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  .g-track { position: relative; height: 18px; }
-  .g-scale { position: relative; height: 16px; font-size: 9px; color: var(--muted); }
-  .g-scale span { position: absolute; transform: translateX(50%); white-space: nowrap; }
-  .g-bar { position: absolute; top: 5px; height: 8px; border-radius: 4px; opacity: .45; }
-  .g-dot { position: absolute; top: 3px; width: 10px; height: 10px; margin-right: -5px; border-radius: 50%; border: 2px solid #fff; }
-  .g-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 9.5px; color: var(--muted); margin-top: 4px; }
-  .g-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-inline-end: 3px; vertical-align: middle; }
-
-  .rp-topic { border: 1px solid #cfd6e0; border-radius: 8px; padding: 8px 10px; margin: 10px 0; }
-  .rp-topic .tt { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .rp-topic .tt h3 { margin: 0; font-size: 13.5px; }
-  .rp-topic .info { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px 10px; font-size: 10.5px; margin: 6px 0; }
-  .rp-topic .info span { color: var(--muted); }
-  .rp-topic .timeline { margin-top: 6px; }
-  .rp-topic .ev { padding-bottom: 8px; break-inside: avoid; }
-  .rp-topic .ev .tools { display: none; }
-  .rp-topic .desc { font-size: 10.5px; padding: 4px 8px; }
-  .rp-foot { margin-top: 12px; color: var(--muted); font-size: 9.5px; text-align: center; }
-  .pb { break-before: page; }
+  .opt-list label { display: flex; gap: 8px; align-items: flex-start; padding: 5px 0; cursor: pointer; }
+  .opt-list label small { display: block; color: var(--muted); font-size: 12px; }
+  .seg { display: flex; gap: 16px; flex-wrap: wrap; }
+  .seg label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+  .logo-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .logo-prev { width: 72px; height: 72px; border: 1px dashed var(--line); border-radius: 10px; display: grid; place-items: center; background: #fafbfc; overflow: hidden; color: var(--muted); font-size: 12px; }
+  .logo-prev img { max-width: 100%; max-height: 100%; }
+  .themes { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .themes button { border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 4px 10px; cursor: pointer; display: flex; gap: 6px; align-items: center; font-size: 13px; }
+  .themes i { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+  .colors { display: flex; gap: 16px; flex-wrap: wrap; }
+  .colors label { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }
+  .colors input[type=color] { width: 44px; height: 30px; border: 1px solid var(--line); border-radius: 6px; padding: 2px; background: #fff; }
 </style>
 </head>
 <body>
@@ -208,7 +178,8 @@
     <div class="toolbar">
       <button class="btn primary" style="background:#fff;color:var(--brand)" id="btnNew">＋ موضوع جديد</button>
       <button class="btn ghost" id="btnExcel">⬇ تصدير Excel</button>
-      <button class="btn ghost" id="btnPdf">🖨 تقرير PDF</button>
+      <button class="btn ghost" id="btnPdf">📄 تقرير PDF</button>
+      <button class="btn ghost" id="btnSettings">⚙ هوية التقرير</button>
       <button class="btn ghost" id="btnBackup">💾 نسخة احتياطية</button>
       <button class="btn ghost" id="btnRestore">↺ استعادة</button>
       <input type="file" id="fileRestore" accept="application/json,.json" class="hidden">
@@ -315,11 +286,84 @@
   </form>
 </dialog>
 
-<!-- print area -->
-<div id="report"></div>
+<!-- report options dialog -->
+<dialog id="dlgReport">
+  <form id="reportForm" method="dialog" autocomplete="off">
+    <h3 id="reportFormTitle">إعداد تقرير PDF</h3>
+    <p class="muted" id="reportScope" style="margin-top:-6px"></p>
+    <div class="field"><label>محتويات التقرير</label><div class="opt-list" id="reportSections"></div></div>
+    <div class="field"><label>اتجاه الصفحة</label>
+      <div class="seg">
+        <label><input type="radio" name="orient" value="landscape"> أفقي (الأنسب للمخططات الزمنية)</label>
+        <label><input type="radio" name="orient" value="portrait"> عمودي</label>
+      </div>
+    </div>
+    <div class="dlg-actions">
+      <button type="button" class="btn" id="btnReportSettings">⚙ هوية التقرير</button>
+      <span style="flex:1"></span>
+      <button type="button" class="btn" data-close>إلغاء</button>
+      <button class="btn primary" value="ok">إنشاء التقرير</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- report branding dialog -->
+<dialog id="dlgSettings">
+  <form id="settingsForm" method="dialog" autocomplete="off">
+    <h3>هوية التقرير</h3>
+    <div class="row">
+      <div class="field"><label>اسم الجهة / المنشأة</label><input name="org"></div>
+      <div class="field"><label>الإدارة / القسم</label><input name="dept"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>عنوان التقرير</label><input name="reportTitle"></div>
+      <div class="field"><label>إعداد</label><input name="preparedBy"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>تصنيف السرية</label>
+        <select name="classification"><option value="">بدون</option><option>عام</option><option>داخلي</option><option>سري</option><option>سري للغاية</option></select>
+      </div>
+      <div class="field"><label>نص التذييل (اختياري)</label><input name="footer"></div>
+    </div>
+    <div class="field"><label>الشعار</label>
+      <div class="logo-row">
+        <div class="logo-prev" id="logoPrev"></div>
+        <button type="button" class="btn small" id="btnLogo">اختيار صورة…</button>
+        <button type="button" class="btn small danger" id="btnLogoDel">إزالة</button>
+        <input type="file" id="fileLogo" accept="image/*" class="hidden">
+      </div>
+    </div>
+    <div class="field"><label>الألوان</label>
+      <div class="themes" id="themeList"></div>
+      <div class="colors">
+        <label>اللون الأساسي <input type="color" name="primary"></label>
+        <label>اللون الثانوي <input type="color" name="accent"></label>
+      </div>
+    </div>
+    <div class="dlg-actions">
+      <button type="button" class="btn" data-close>إلغاء</button>
+      <button class="btn primary" value="ok">حفظ</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- report preview -->
+<div id="rpOverlay">
+  <div class="rp-bar">
+    <span class="ttl" id="rpTitle">معاينة التقرير</span>
+    <span class="prog" id="rpProg"></span>
+    <button class="btn primary" id="rpDownload">⬇ تنزيل PDF</button>
+    <button class="btn" id="rpPrint">🖨 طباعة</button>
+    <button class="btn" id="rpEdit">⚙ تعديل الخيارات</button>
+    <button class="btn" id="rpClose">✕ إغلاق</button>
+  </div>
+  <div id="rpStage"></div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script src="lib/exceljs.min.js"></script>
+<script src="lib/html-to-image.js"></script>
+<script src="lib/jspdf.umd.min.js"></script>
 <script>
 "use strict";
 
@@ -385,10 +429,10 @@ function load() {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) {
       const d = JSON.parse(raw);
-      if (d && Array.isArray(d.topics)) return { seq: d.seq || d.topics.length, topics: d.topics };
+      if (d && Array.isArray(d.topics)) return { seq: d.seq || d.topics.length, topics: d.topics, settings: d.settings || {} };
     }
   } catch (e) { console.warn(e); }
-  return { seq: 0, topics: [] };
+  return { seq: 0, topics: [], settings: {} };
 }
 
 function save() {
@@ -568,7 +612,7 @@ function renderDetail() {
       <button class="btn" onclick="openTopicDialog('${t.id}')">✎ تعديل البيانات</button>
       ${closed ? `<button class="btn" onclick="reopenTopic()">↺ إعادة فتح</button>`
                : `<button class="btn success" onclick="openCloseDialog()">✔ إقفال الموضوع</button>`}
-      <button class="btn" onclick="printReport([getTopic(ui.current)], true)">🖨 تقرير PDF للموضوع</button>
+      <button class="btn" onclick="openReportDialog([getTopic(ui.current)])">📄 تقرير PDF للموضوع</button>
       <button class="btn" onclick="exportExcel([getTopic(ui.current)])">⬇ Excel للموضوع</button>
       <button class="btn danger" onclick="deleteTopic()">حذف الموضوع</button>
     </div>`;
@@ -746,12 +790,12 @@ $("#fileRestore").onchange = async e => {
     const d = JSON.parse(await file.text());
     if (!d || !Array.isArray(d.topics)) throw new Error("ملف غير صالح");
     if (!confirm(`استعادة ${d.topics.length} موضوع؟ سيتم استبدال البيانات الحالية.`)) return;
-    db = { seq: d.seq || d.topics.length, topics: d.topics };
+    db = { seq: d.seq || d.topics.length, topics: d.topics, settings: d.settings || db.settings || {} };
     save(); showList(); toast("تمت الاستعادة");
   } catch (err) { alert("تعذرت الاستعادة: " + err.message); }
 };
 
-/* ================= PDF report (browser print) ================= */
+/* ================= report scope (used by report.js) ================= */
 function scopeLabel() {
   const st = $("#fStatus");
   let s = st.options[st.selectedIndex].text;
@@ -760,90 +804,6 @@ function scopeLabel() {
   return s;
 }
 
-function ganttHTML(topics) {
-  const starts = topics.map(t => t.openDate);
-  const ends = topics.map(t => [endDate(t), ...t.events.map(e => e.date)].sort().pop());
-  const min = starts.sort()[0], max = ends.sort().pop();
-  const span = Math.max(1, daysBetween(min, max));
-  const pos = iso => (daysBetween(min, iso) / span) * 100;
-
-  // ~6 evenly spaced scale labels
-  const ticks = [];
-  for (let i = 0; i <= 5; i++) ticks.push(isoFromUTC(toUTC(min) + Math.round(span * i / 5) * 86400000));
-  const scale = ticks.map((d, i) => {
-    const at = i === 0 ? "right:0;transform:none" : i === 5 ? "left:0;transform:none" : `right:${i * 20}%`;
-    return `<span style="${at}">${fmt(d)}</span>`;
-  }).join("");
-
-  const rows = topics.map(t => {
-    const s = pos(t.openDate), e = pos(endDate(t));
-    const dots = sortedEvents(t).map(ev =>
-      `<i class="g-dot" style="right:${pos(ev.date)}%;background:${EVT[ev.type].color}" title="${esc(fmt(ev.date) + " " + EVT[ev.type].ar)}"></i>`).join("");
-    return `<div class="g-row"><div class="g-label">${esc(t.ref)} – ${esc(t.title)}</div>
-      <div class="g-track"><div class="g-bar" style="right:${s}%;width:${Math.max(0.5, e - s)}%;background:${STATUS[t.status].color}"></div>${dots}</div></div>`;
-  }).join("");
-
-  const usedTypes = [...new Set(topics.flatMap(t => t.events.map(e => e.type)))];
-  const legend = usedTypes.map(k => `<span><i style="background:${EVT[k].color}"></i>${EVT[k].ar}</span>`).join("");
-  return `<div class="gantt"><div class="g-axis"><div></div><div class="g-scale">${scale}</div></div>${rows}
-    <div class="g-legend">${legend}</div></div>`;
-}
-
-function topicBlockHTML(t) {
-  return `<div class="rp-topic">
-    <div class="tt"><h3>${esc(t.ref)} – ${esc(t.title)}</h3>${statusBadges(t)}</div>
-    <div class="info">
-      <div><span>التصنيف: </span>${esc(t.category) || "—"}</div>
-      <div><span>الجهة: </span>${esc(t.party) || "—"}</div>
-      <div><span>المسؤول: </span>${esc(t.owner) || "—"}</div>
-      <div><span>الأولوية: </span>${PRIORITY[t.priority]}</div>
-      <div><span>الفتح: </span>${fmt(t.openDate)}</div>
-      <div><span>الاستحقاق: </span>${fmt(t.dueDate)}</div>
-      <div><span>الإقفال: </span>${fmt(t.closeDate)}</div>
-      <div><span>المدة: </span>${ageDays(t)} يوم</div>
-    </div>
-    ${t.description ? `<div class="desc">${esc(t.description)}</div>` : ""}
-    <div class="timeline">${timelineHTML(t, false)}</div>
-  </div>`;
-}
-
-function printReport(topics, single) {
-  topics = topics || filteredTopics();
-  if (!topics.length) { alert("لا توجد مواضيع ضمن التصفية الحالية."); return; }
-  const now = new Date();
-  const c = { open: 0, progress: 0, hold: 0, closed: 0 };
-  topics.forEach(t => c[t.status]++);
-  const overdue = topics.filter(isOverdue).length;
-
-  const summary = `<table><thead><tr>
-      <th>المرجع</th><th>الموضوع</th><th>الحالة</th><th>المسؤول</th><th>الفتح</th><th>الاستحقاق</th><th>الإقفال</th><th>المدة</th><th>آخر مستجد</th></tr></thead><tbody>
-      ${topics.map(t => { const le = lastEvent(t); return `<tr>
-        <td style="white-space:nowrap">${esc(t.ref)}</td><td>${esc(t.title)}</td><td>${STATUS[t.status].ar}${isOverdue(t) ? " (متأخر)" : ""}</td><td>${esc(t.owner)}</td>
-        <td>${fmt(t.openDate)}</td><td>${fmt(t.dueDate)}</td><td>${fmt(t.closeDate)}</td><td>${ageDays(t)}</td>
-        <td>${le ? fmt(le.date) + " – " + esc(le.text.length > 90 ? le.text.slice(0, 90) + "…" : le.text) : ""}</td></tr>`; }).join("")}
-    </tbody></table>`;
-
-  const title = single ? `تقرير متابعة: ${topics[0].ref}` : "تقرير متابعة المواضيع";
-  $("#report").innerHTML = `
-    <div class="rp-head"><div><h1>${esc(title)}</h1>
-      <div class="sub">${single ? esc(topics[0].title) : "النطاق: " + esc(scopeLabel())}</div></div>
-      <div class="sub">تاريخ الإصدار: ${fmt(todayISO())} ${pad(now.getHours())}:${pad(now.getMinutes())}</div></div>
-    ${single ? "" : `<div class="rp-stats">
-      <div><b>${topics.length}</b>الإجمالي</div><div><b>${c.open}</b>مفتوح</div><div><b>${c.progress}</b>قيد الإجراء</div>
-      <div><b>${c.hold}</b>معلّق</div><div><b style="color:var(--danger)">${overdue}</b>متأخر</div><div><b style="color:var(--closed)">${c.closed}</b>مقفل</div></div>
-      <h2>ملخص المواضيع</h2>${summary}`}
-    <h2>المخطط الزمني العام</h2>${ganttHTML(topics)}
-    ${single ? "" : `<h2 class="pb">تفاصيل المواضيع والمخطط الزمني لكل موضوع</h2>`}
-    ${single ? `<h2>تفاصيل الموضوع</h2>` : ""}
-    ${topics.map(topicBlockHTML).join("")}
-    <div class="rp-foot">نظام متابعة المواضيع – ${fmt(todayISO())}</div>`;
-
-  const oldTitle = document.title;
-  document.title = single ? `تقرير-${topics[0].ref}-${todayISO()}` : `تقرير-المواضيع-${todayISO()}`;
-  window.addEventListener("afterprint", () => { document.title = oldTitle; }, { once: true });
-  window.print();
-}
-$("#btnPdf").onclick = () => printReport();
 
 /* ================= Excel export ================= */
 const XL = {
@@ -1036,5 +996,6 @@ function loadDemo() {
   if (m && getTopic(m[1])) showDetail(m[1]); else showList();
 })();
 </script>
+<script src="report.js"></script>
 </body>
 </html>
