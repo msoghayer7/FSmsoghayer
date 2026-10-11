@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>متابعة المواضيع</title>
 <script src="lib/fonts.js"></script>
+<script src="lib/brand.js"></script>
 <link rel="stylesheet" href="report.css">
 <style>
   :root {
@@ -13,8 +14,9 @@
     --ink: #1d2433;
     --muted: #667085;
     --line: #e3e7ee;
-    --brand: #1f4e79;
-    --brand-soft: #e8f0f8;
+    --brand: #066d39;
+    --brand-soft: #e7f2ec;
+    --gold: #cda053;
     --open: #2563eb;
     --progress: #d97706;
     --hold: #7c3aed;
@@ -37,6 +39,7 @@
   /* header */
   header.top {
     background: var(--brand);
+    border-bottom: 4px solid var(--gold);
     color: #fff;
   }
   header.top .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between; }
@@ -358,7 +361,9 @@
       <div class="logo-row">
         <div class="logo-prev" id="logoPrev"></div>
         <button type="button" class="btn small" id="btnLogo">اختيار صورة…</button>
-        <button type="button" class="btn small danger" id="btnLogoDel">إزالة</button>
+        <button type="button" class="btn small" id="btnLogoDef">الشعار الرسمي</button>
+        <button type="button" class="btn small danger" id="btnLogoDel">بدون شعار</button>
+        <small class="muted" id="logoNote"></small>
         <input type="file" id="fileLogo" accept="image/*" class="hidden">
       </div>
     </div>
@@ -579,12 +584,15 @@ function statusBadges(t) {
   return h;
 }
 
+/* logo setting: "" = official NRRC logo, "none" = no logo, data URL = custom */
+function logoSrc(st) { return st.logo === "none" ? "" : (st.logo || (window.BRAND ? BRAND.icon : "")); }
+
 function renderHeader() {
   const st = db.settings || {};
   $("#hdrOrg").textContent = st.org || "هيئة الرقابة النووية والإشعاعية";
-  const img = $("#hdrLogo");
-  img.classList.toggle("hidden", !st.logo);
-  if (st.logo) img.src = st.logo;
+  const img = $("#hdrLogo"), src = logoSrc(st);
+  img.classList.toggle("hidden", !src);
+  if (src) img.src = src;
 }
 
 function renderList() {
@@ -855,8 +863,8 @@ function scopeLabel() {
 
 /* ================= Excel export ================= */
 const XL = {
-  brand: "FF1F4E79",
-  head: { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F4E79" } },
+  brand: "FF066D39",
+  head: { type: "pattern", pattern: "solid", fgColor: { argb: "FF066D39" } },
   border: { top: { style: "thin", color: { argb: "FFCFD6E0" } }, left: { style: "thin", color: { argb: "FFCFD6E0" } },
             bottom: { style: "thin", color: { argb: "FFCFD6E0" } }, right: { style: "thin", color: { argb: "FFCFD6E0" } } },
   fill: argb => ({ type: "pattern", pattern: "solid", fgColor: { argb } }),

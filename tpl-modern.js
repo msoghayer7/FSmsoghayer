@@ -10,10 +10,10 @@
   const EC = { create: "#0f172a", update: "#2a78d6", followup: "#1baf7a", meeting: "#6250d6", letter: "#3f7fbf", inspection: "#0f766e", action: "#eb6834",
     decision: "#d55181", status: "#64748b", close: "#1baf7a", reopen: "#e34948", now: "#e34948" };
   const RED = "#e34948";
-  const colors = S => S.customColors ? { p: S.primary, a: S.accent } : { p: "#2a78d6", a: "#1baf7a" };
+  const colors = S => S.customColors ? { p: S.primary, a: S.accent } : { p: "#1b9bd7", a: "#066d39" };
 
   function logo(S) {
-    if (S.logo) return `<div class="logo img"><img src="${S.logo}" alt=""></div>`;
+    if (logoSrc(S)) return `<div class="logo img"><img src="${logoSrc(S)}" alt=""></div>`;
     return `<div class="logo">${esc((S.org || "م").trim().charAt(0))}</div>`;
   }
 

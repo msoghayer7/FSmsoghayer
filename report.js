@@ -288,9 +288,11 @@ const DEFAULT_SETTINGS = {
   org: "هيئة الرقابة النووية والإشعاعية", dept: "", reportTitle: "تقرير متابعة المواضيع", preparedBy: "", period: "",
   classification: "داخلي", footer: "", logo: "", docNo: "",
   sigPrep: "", sigReview: "", sigApprove: "",
-  customColors: false, primary: "#0e4d3a", accent: "#a8853a",
+  customColors: false, primary: "#066d39", accent: "#cda053",
 };
 const THEMES = [
+  ["ألوان الهيئة", "#066d39", "#cda053"],
+  ["الهيئة (أخضر وأزرق)", "#066d39", "#1b9bd7"],
   ["أخضر وذهبي", "#0e4d3a", "#a8853a"],
   ["كحلي وأزرق", "#0b1f3a", "#2251ff"],
   ["كحلي وذهبي", "#1f3a5f", "#b8913a"],
@@ -357,6 +359,8 @@ function buildReport() {
   const S = rs(), tpl = TPL[RP.opts.tpl], topics = RP.topics, single = RP.single;
   const ctx = {
     S, single, opts: RP.opts, topics,
+    logo: logoSrc(S),
+    logoWide: !S.logo && window.BRAND ? BRAND.wide : "",
     title: single ? `بيان متابعة موضوع ${topics[0].ref}` : S.reportTitle,
     period: S.period || `حتى ${fmtLong(todayISO())}`,
   };
@@ -463,7 +467,11 @@ function openSettingsDialog() {
   $("#dlgSettings").showModal();
 }
 function syncColorFields() { $("#colorFields").classList.toggle("dim", !$("#settingsForm").customColors.checked); }
-function renderLogoPrev() { $("#logoPrev").innerHTML = pendingLogo ? `<img src="${pendingLogo}" alt="">` : "لا يوجد"; }
+function renderLogoPrev() {
+  const src = logoSrc({ logo: pendingLogo });
+  $("#logoPrev").innerHTML = src ? `<img src="${src}" alt="">` : "لا يوجد";
+  $("#logoNote").textContent = !pendingLogo ? "الشعار الرسمي للهيئة" : pendingLogo === "none" ? "بدون شعار" : "شعار مخصص";
+}
 
 $("#settingsForm").customColors.addEventListener("change", syncColorFields);
 $("#themeList").addEventListener("click", e => {
@@ -471,7 +479,8 @@ $("#themeList").addEventListener("click", e => {
   const f = $("#settingsForm"); f.primary.value = b.dataset.p; f.accent.value = b.dataset.a; f.customColors.checked = true; syncColorFields();
 });
 $("#btnLogo").onclick = () => $("#fileLogo").click();
-$("#btnLogoDel").onclick = () => { pendingLogo = ""; renderLogoPrev(); };
+$("#btnLogoDel").onclick = () => { pendingLogo = "none"; renderLogoPrev(); };
+$("#btnLogoDef").onclick = () => { pendingLogo = ""; renderLogoPrev(); };
 $("#fileLogo").onchange = e => {
   const file = e.target.files[0]; e.target.value = "";
   if (!file) return;

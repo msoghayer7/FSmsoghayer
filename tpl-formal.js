@@ -12,17 +12,17 @@
   const emblem = c => `<svg class="emb" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="none" stroke="${c.a}" stroke-width="1.2"/><circle cx="32" cy="32" r="26" fill="${c.p}"/>
     <path d="M32 14l4.5 9.5 10.5 1.4-7.7 7.2 2 10.4L32 37.6l-9.3 4.9 2-10.4-7.7-7.2 10.5-1.4z" fill="none" stroke="#e2c27a" stroke-width="1.6" stroke-linejoin="round"/>
     <path d="M20 46c4 3 8 4.5 12 4.5S40 49 44 46" fill="none" stroke="#e2c27a" stroke-width="1.4" stroke-linecap="round"/></svg>`;
-  const colors = S => S.customColors ? { p: S.primary, a: S.accent } : { p: "#0e4d3a", a: "#a8853a" };
+  const colors = S => S.customColors ? { p: S.primary, a: S.accent } : { p: "#066d39", a: "#cda053" };
 
   function shell(ctx, page, first) {
     const S = ctx.S, c = colors(S);
-    const logo = S.logo ? `<img class="emb" src="${S.logo}" alt="">` : emblem(c);
+    const logo = ctx.logo ? `<img class="emb" src="${ctx.logo}" alt="">` : emblem(c);
     const org = esc(S.org || "نظام متابعة المواضيع");
     const head = first
-      ? `<div class="lh"><div class="r"><b>${org}</b><span>${esc(S.dept)}</span></div>${logo}
+      ? `<div class="lh">${ctx.logoWide ? `<div class="r wide"><img src="${ctx.logoWide}" alt="${org}">${S.dept ? `<span>${esc(S.dept)}</span>` : ""}</div><div></div>` : `<div class="r"><b>${org}</b><span>${esc(S.dept)}</span></div>${logo}`}
           <div class="l"><span>الرقم:</span><b><bdi>${esc(S.docNo || "—")}</bdi></b><span>التاريخ:</span><b><bdi>${fmt(todayISO())}</bdi></b>
           <span>المرفقات:</span><b>${page.kind === "topic" ? "—" : "بيان تفصيلي"}</b></div></div><div class="dbl"></div>`
-      : `<div class="lh-mini"><b>${org}</b><span>${esc(ctx.title)}</span><span><bdi>${fmt(todayISO())}</bdi></span></div><div class="dbl thin"></div>`;
+      : `<div class="lh-mini">${ctx.logo ? `<img src="${ctx.logo}" alt="">` : ""}<b>${org}</b><span>${esc(ctx.title)}</span><span><bdi>${fmt(todayISO())}</bdi></span></div><div class="dbl thin"></div>`;
     return `<div class="frame"></div>${head}<div class="pg-body"></div>
       <div class="foot"><span>${esc(S.footer || ctx.title)}</span>${S.classification ? `<span class="cls">التصنيف: ${esc(S.classification)}</span>` : "<span></span>"}
       <span>صفحة <span class="pg-n"></span> من <span class="pg-t"></span></span></div>`;
@@ -167,7 +167,7 @@
 
   TPL.formal = {
     key: "formal", name: "رسمي حكومي", desc: "ترويسة رسمية، فقرة ملخص، جداول مسطّرة، سجل إجراءات مرقّم وخانات توقيع",
-    swatch: `<i style="background:#0e4d3a"></i><i style="background:#a8853a"></i>`,
+    swatch: `<i style="background:#066d39"></i><i style="background:#cda053"></i>`,
     vars: ctx => { const c = colors(ctx.S); return `--g:${c.p};--gold:${c.a}`; },
     shell, summary, topic, closing,
   };

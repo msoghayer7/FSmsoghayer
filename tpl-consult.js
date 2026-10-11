@@ -6,7 +6,7 @@
    next steps / risks
    ===================================================================== */
 (() => {
-  const colors = S => S.customColors ? { p: S.primary, a: S.accent } : { p: "#0b1f3a", a: "#2251ff" };
+  const colors = S => S.customColors ? { p: S.primary, a: S.accent } : { p: "#0b3b26", a: "#1b9bd7" };
   // status shades of the primary colour (closed = full, open = light)
   const SH = { closed: 1, progress: 0.78, open: 0.45, hold: 0.22 };
   const shade = k => `color-mix(in srgb, var(--navy) ${SH[k] * 100}%, #fff)`;
@@ -18,7 +18,7 @@
     const right = page.kind === "topic" ? esc(page.t.title) : `${esc(S.reportTitle)} · ${esc(ctx.period)}`;
     return `<div class="trk"><b>${label}${first ? "" : " (تابع)"}</b><span>${right}</span></div>
       <div class="pg-body"></div>
-      <div class="foot">${S.logo ? `<img src="${S.logo}" alt="">` : ""}<span class="lg">${esc(S.org || "نظام متابعة المواضيع")}</span>
+      <div class="foot">${ctx.logo ? `<img src="${ctx.logo}" alt="">` : ""}<span class="lg">${esc(S.org || "نظام متابعة المواضيع")}</span>
         <span>المصدر: نظام متابعة المواضيع، بيانات حتى ${fmtLong(todayISO())}${S.classification ? " · " + esc(S.classification) : ""}</span><span class="pn"><span class="pg-n"></span></span></div>`;
   }
 
@@ -118,7 +118,7 @@
 
   TPL.consult = {
     key: "consult", name: "استشاري", desc: "عنوان-خلاصة لكل صفحة، أبرز النقاط والقرارات المطلوبة، مخطط هادئ، الخطوات التالية والمخاطر",
-    swatch: `<i style="background:#0b1f3a"></i><i style="background:#2251ff"></i>`,
+    swatch: `<i style="background:#0b3b26"></i><i style="background:#1b9bd7"></i>`,
     vars: ctx => { const c = colors(ctx.S); return `--navy:${c.p};--blue:${c.a}`; },
     shell, summary, topic,
   };
