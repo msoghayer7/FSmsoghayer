@@ -176,6 +176,7 @@ const ICONS = {
   update:   '<path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/>',
   followup: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   meeting:  '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17 14.2c2.6.3 4.5 2.6 4.5 5.8"/>',
+  inspection: '<path d="M9 4h6v3H9z"/><path d="M9 5H6v16h12V5h-3"/><path d="m9 14 2 2 4-4"/>',
   letter:   '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 6.5 12 13l8.5-6.5"/>',
   action:   '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
   decision: '<path d="M9 3h6v5l2 3H7l2-3z"/><path d="M5 14h14v3.5H5z"/><path d="M7 21h10"/>',
@@ -284,7 +285,7 @@ class Pager {
    Settings
    ===================================================================== */
 const DEFAULT_SETTINGS = {
-  org: "", dept: "", reportTitle: "تقرير متابعة المواضيع", preparedBy: "", period: "",
+  org: "هيئة الرقابة النووية والإشعاعية", dept: "", reportTitle: "تقرير متابعة المواضيع", preparedBy: "", period: "",
   classification: "داخلي", footer: "", logo: "", docNo: "",
   sigPrep: "", sigReview: "", sigApprove: "",
   customColors: false, primary: "#0e4d3a", accent: "#a8853a",
@@ -485,12 +486,41 @@ $("#fileLogo").onchange = e => {
       c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
       pendingLogo = c.toDataURL("image/png");
       renderLogoPrev();
+      suggestColorsFromLogo(c);
     };
     img.onerror = () => alert("تعذر قراءة الصورة.");
     img.src = rd.result;
   };
   rd.readAsDataURL(file);
 };
+
+/* pick the two most common saturated colours of the logo as report colours */
+function suggestColorsFromLogo(canvas) {
+  const { data } = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
+  const bins = new Map();
+  for (let i = 0; i < data.length; i += 4) {
+    const [r, g, b, a] = [data[i], data[i + 1], data[i + 2], data[i + 3]];
+    if (a < 128) continue;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    if (mx - mn < 40 || mx < 40 || mn > 225) continue;          // skip grey, black, white
+    const k = (r >> 4) << 8 | (g >> 4) << 4 | (b >> 4);
+    const e = bins.get(k) || { n: 0, r: 0, g: 0, b: 0 };
+    e.n++; e.r += r; e.g += g; e.b += b; bins.set(k, e);
+  }
+  const cols = [...bins.values()].sort((a, b) => b.n - a.n).map(e => [e.r / e.n, e.g / e.n, e.b / e.n]);
+  if (!cols.length) return;
+  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  const lum = c => (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) / 255;
+  const hex = c => "#" + c.map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("");
+  // primary carries white text: darken it until it is dark enough
+  const darken = c => { let d = c.slice(); while (lum(d) > 0.42) d = d.map(v => v * 0.88); return d; };
+  const a = cols[0], b = cols.find(c => dist(c, a) > 60) || cols[0].map(v => v * 0.6 + 100);
+  const [p, s] = lum(a) <= lum(b) ? [a, b] : [b, a];
+  const f = $("#settingsForm");
+  f.primary.value = hex(darken(p)); f.accent.value = hex(s);
+  f.customColors.checked = true; syncColorFields();
+  toast("تم اقتراح ألوان التقرير من الشعار – يمكنك تعديلها");
+}
 
 $("#settingsForm").addEventListener("submit", ev => {
   if (ev.submitter?.value !== "ok") return;
@@ -500,6 +530,7 @@ $("#settingsForm").addEventListener("submit", ev => {
   db.settings.customColors = f.customColors.checked;
   db.settings.logo = pendingLogo;
   save();
+  renderHeader();
   toast("تم حفظ هوية التقرير");
   if ($("#rpOverlay").classList.contains("show")) showPreview();
 });

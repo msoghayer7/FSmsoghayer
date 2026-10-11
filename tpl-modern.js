@@ -7,7 +7,7 @@
    ===================================================================== */
 (() => {
   const SC = { open: "#2a78d6", progress: "#eda100", hold: "#6250d6", closed: "#1baf7a" };
-  const EC = { create: "#0f172a", update: "#2a78d6", followup: "#1baf7a", meeting: "#6250d6", letter: "#3f7fbf", action: "#eb6834",
+  const EC = { create: "#0f172a", update: "#2a78d6", followup: "#1baf7a", meeting: "#6250d6", letter: "#3f7fbf", inspection: "#0f766e", action: "#eb6834",
     decision: "#d55181", status: "#64748b", close: "#1baf7a", reopen: "#e34948", now: "#e34948" };
   const RED = "#e34948";
   const colors = S => S.customColors ? { p: S.primary, a: S.accent } : { p: "#2a78d6", a: "#1baf7a" };

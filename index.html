@@ -40,7 +40,10 @@
     color: #fff;
   }
   header.top .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between; }
-  header.top h1 { margin: 0; font-size: 20px; }
+  header.top h1 { margin: 0; font-size: 20px; line-height: 1.3; }
+  .brandline { display: flex; align-items: center; gap: 10px; }
+  .brandline img { height: 42px; max-width: 90px; object-fit: contain; background: #fff; border-radius: 8px; padding: 3px; }
+  #hdrOrg { font-size: 13px; opacity: .85; }
   .toolbar { display: flex; flex-wrap: wrap; gap: 8px; }
 
   .btn {
@@ -182,7 +185,7 @@
 
 <header class="top">
   <div class="wrap">
-    <h1>📋 نظام متابعة المواضيع</h1>
+    <div class="brandline"><img id="hdrLogo" class="hidden" alt=""><div><h1>نظام متابعة المواضيع</h1><span id="hdrOrg"></span></div></div>
     <div class="toolbar">
       <button class="btn primary" style="background:#fff;color:var(--brand)" id="btnNew">＋ موضوع جديد</button>
       <button class="btn ghost" id="btnExcel">⬇ تصدير Excel</button>
@@ -405,6 +408,9 @@ const STATUS = {
   hold:     { ar: "معلّق",        color: "#7c3aed", xl: "FFEDE4FE" },
   closed:   { ar: "مقفل",        color: "#15803d", xl: "FFD1FAE0" },
 };
+// suggested categories for regulatory work (free text is still allowed)
+const CATEGORY_PRESETS = ["التراخيص والتصاريح", "التفتيش والرقابة", "الإنفاذ والمخالفات", "الأمان النووي", "الوقاية من الإشعاع",
+  "الأمن النووي", "الضمانات", "التأهب والاستجابة للطوارئ", "النفايات المشعة", "الأنظمة واللوائح", "التعاون الدولي", "الشؤون الإدارية والمالية"];
 const PRIORITY = { high: "عالية", medium: "متوسطة", low: "منخفضة" };
 
 // event types; `manual` = selectable in the event form
@@ -414,6 +420,7 @@ const EVT = {
   followup: { ar: "متابعة",       color: "#0891b2", manual: true },
   meeting:  { ar: "اجتماع",       color: "#9333ea", manual: true },
   letter:   { ar: "مراسلة",       color: "#64748b", manual: true },
+  inspection: { ar: "تفتيش / زيارة ميدانية", color: "#0f766e", manual: true },
   action:   { ar: "إجراء",        color: "#d97706", manual: true },
   decision: { ar: "قرار",         color: "#be185d", manual: true },
   status:   { ar: "تغيير حالة",   color: "#7c3aed" },
@@ -563,7 +570,7 @@ function renderCategories() {
   const sel = $("#fCategory"), cur = sel.value;
   sel.innerHTML = `<option value="">كل التصنيفات</option>` + cats.map(c => `<option>${esc(c)}</option>`).join("");
   sel.value = cats.includes(cur) ? cur : "";
-  $("#catList").innerHTML = cats.map(c => `<option value="${esc(c)}">`).join("");
+  $("#catList").innerHTML = [...new Set([...cats, ...CATEGORY_PRESETS])].map(c => `<option value="${esc(c)}">`).join("");
 }
 
 function statusBadges(t) {
@@ -572,7 +579,16 @@ function statusBadges(t) {
   return h;
 }
 
+function renderHeader() {
+  const st = db.settings || {};
+  $("#hdrOrg").textContent = st.org || "هيئة الرقابة النووية والإشعاعية";
+  const img = $("#hdrLogo");
+  img.classList.toggle("hidden", !st.logo);
+  if (st.logo) img.src = st.logo;
+}
+
 function renderList() {
+  renderHeader();
   renderStats();
   renderCategories();
   const arr = filteredTopics();
@@ -1009,26 +1025,28 @@ function loadDemo() {
     else if (evs.length) t.status = "progress";
     return t;
   };
-  mk({ title: "تجديد عقد صيانة المبنى الرئيسي", category: "عقود", party: "إدارة المشتريات", owner: "أحمد العتيبي", priority: "high", openDate: d(-40), dueDate: d(-5),
-       description: "انتهاء عقد الصيانة الحالي ويلزم الطرح والترسية قبل نهاية الربع لضمان استمرارية الخدمة.",
-       nextSteps: "انعقاد لجنة الفحص واعتماد التقييم الفني\nالتقييم المالي والترسية على أفضل العروض\nتوقيع العقد وتسليم الموقع للمقاول",
-       risks: "انقطاع خدمات الصيانة بعد انتهاء العقد الحالي\nتأخر إضافي إن لم تنعقد اللجنة هذا الأسبوع",
-       decision: "عقد اجتماع لجنة الفحص هذا الأسبوع لترسية عقد الصيانة" },
-     [[-35, "letter", "إرسال خطاب لإدارة المشتريات بطلب طرح المنافسة", "أحمد العتيبي"], [-28, "meeting", "اجتماع مع المشتريات لمراجعة كراسة الشروط واعتماد نطاق العمل", "لجنة العقود"],
-      [-15, "action", "طرح المنافسة واستقبال ثلاثة عروض من المقاولين المؤهلين", "إدارة المشتريات"], [-6, "followup", "متابعة التقييم الفني للعروض – بانتظار اجتماع لجنة الفحص", "أحمد العتيبي"]]);
-  mk({ title: "معالجة ملاحظات المراجعة الداخلية", category: "حوكمة", party: "المراجعة الداخلية", owner: "سارة القحطاني", priority: "medium", openDate: d(-60), dueDate: d(-10) },
-     [[-55, "update", "استلام تقرير الملاحظات (7 ملاحظات)"], [-42, "action", "معالجة 4 ملاحظات ورفع الشواهد"],
-      [-25, "decision", "اعتماد خطة معالجة الملاحظات المتبقية"]], [-12, "تمت معالجة جميع الملاحظات وإغلاقها من المراجعة الداخلية"]);
-  mk({ title: "ربط النظام مع الجهة الخارجية", category: "تقنية", party: "تقنية المعلومات", owner: "خالد الشهري", priority: "high", openDate: d(-20), dueDate: d(15),
-       nextSteps: "تنفيذ اختبارات التكامل على بيئة الاختبار\nاعتماد نتائج الاختبار والانتقال للتشغيل الفعلي" },
-     [[-18, "letter", "مراسلة الجهة لطلب وثائق الربط"], [-9, "meeting", "اجتماع فني مع فريق الجهة"], [-2, "update", "استلام بيئة الاختبار"]]);
-  const hold = mk({ title: "توريد أجهزة الحاسب للفرع الجديد", category: "مشتريات", party: "الشؤون المالية", owner: "فهد الدوسري", priority: "medium", openDate: d(-52), dueDate: d(9),
-       decision: "البت في ميزانية أجهزة الفرع الجديد قبل موعد الاستحقاق" },
-     [[-39, "action", "إعداد المواصفات الفنية"], [-13, "followup", "تعليق الطلب بانتظار اعتماد الميزانية"]]);
+  mk({ title: "استكمال متطلبات ترخيص منشأة طبية تستخدم مصادر مشعة", category: "التراخيص والتصاريح", party: "جهة طبية طالبة للترخيص", owner: "أحمد العتيبي", priority: "high", openDate: d(-40), dueDate: d(-5),
+       description: "طلب ترخيص جديد لاستخدام مصادر مشعة في العلاج الإشعاعي، ويتطلب استيفاء متطلبات الدروع والتقييم الإشعاعي قبل إصدار الترخيص.",
+       nextSteps: "استلام تقرير قياس مستويات الإشعاع بعد تعديل الدروع\nمراجعة التقرير من إدارة الوقاية من الإشعاع\nعرض التوصية على لجنة التراخيص",
+       risks: "تأخر تشغيل الخدمة العلاجية لدى الجهة\nانتهاء صلاحية التصريح المؤقت قبل صدور الترخيص",
+       decision: "اعتماد تمديد التصريح المؤقت لمدة 30 يوماً لحين استكمال المتطلبات" },
+     [[-35, "letter", "إرسال خطاب للجهة بطلب استيفاء متطلبات الدروع وخطة الوقاية الإشعاعية", "أحمد العتيبي"],
+      [-26, "inspection", "زيارة ميدانية للتحقق من غرفة العلاج وأنظمة الدروع؛ رُصدت 3 ملاحظات", "فريق التفتيش"],
+      [-15, "meeting", "اجتماع مع الجهة لمناقشة خطة معالجة الملاحظات وجدولها الزمني", "إدارة التراخيص"],
+      [-6, "followup", "متابعة تنفيذ تعديلات الدروع – بانتظار تقرير القياس من الجهة", "أحمد العتيبي"]]);
+  mk({ title: "معالجة ملاحظات التفتيش الدوري على منشأة صناعية", category: "التفتيش والرقابة", party: "منشأة صناعية مرخَّص لها", owner: "سارة القحطاني", priority: "medium", openDate: d(-60), dueDate: d(-10) },
+     [[-57, "inspection", "تفتيش دوري ورصد 5 ملاحظات على حفظ المصادر وسجلات الجرعات"], [-50, "letter", "إبلاغ المنشأة بالملاحظات ومهلة المعالجة"],
+      [-33, "update", "استلام شواهد معالجة 4 ملاحظات"], [-20, "inspection", "زيارة تحقق ميدانية من المعالجة"]], [-12, "التحقق من معالجة جميع الملاحظات وإغلاقها"]);
+  mk({ title: "تحديث لائحة الوقاية من الإشعاع", category: "الأنظمة واللوائح", party: "الإدارة القانونية", owner: "خالد الشهري", priority: "high", openDate: d(-50), dueDate: d(6),
+       nextSteps: "دراسة مرئيات الجهات ذات العلاقة\nإعداد المسودة النهائية ورفعها للاعتماد" },
+     [[-45, "meeting", "ورشة عمل داخلية لمراجعة المسودة الأولى"], [-30, "action", "طرح المسودة لأخذ مرئيات الجهات ذات العلاقة"], [-4, "update", "استلام 12 مرئية من الجهات"]]);
+  const hold = mk({ title: "تنفيذ تمرين الاستجابة لحادث إشعاعي", category: "التأهب والاستجابة للطوارئ", party: "الجهات المشاركة في الخطة الوطنية", owner: "فهد الدوسري", priority: "medium", openDate: d(-52), dueDate: d(9),
+       decision: "تحديد موعد بديل للتمرين ومخاطبة الجهات المشاركة" },
+     [[-39, "action", "إعداد سيناريو التمرين وخطة التقييم"], [-13, "followup", "تعليق موعد التمرين بانتظار تأكيد الجهات المشاركة"]]);
   hold.status = "hold";
-  mk({ title: "تحديث سياسة العمل عن بعد", category: "موارد بشرية", party: "الموارد البشرية", owner: "نورة الحربي", priority: "low", openDate: d(-8), dueDate: d(35) }, []);
-  mk({ title: "تجهيز قاعة التدريب", category: "مرافق", party: "الخدمات العامة", owner: "سارة القحطاني", priority: "low", openDate: d(-88), dueDate: d(-41) },
-     [[-74, "action", "توريد الأثاث والتجهيزات"]], [-44, "تسليم القاعة وتشغيلها"]);
+  mk({ title: "إعداد التقرير السنوي للضمانات", category: "الضمانات", party: "إدارة الضمانات", owner: "نورة الحربي", priority: "low", openDate: d(-8), dueDate: d(35) }, []);
+  mk({ title: "تحديث السجل الوطني للمصادر المشعة", category: "الوقاية من الإشعاع", party: "إدارة الوقاية من الإشعاع", owner: "سارة القحطاني", priority: "low", openDate: d(-88), dueDate: d(-41) },
+     [[-74, "action", "حصر المصادر لدى الجهات المرخَّص لها ومطابقتها مع السجل"]], [-44, "اعتماد السجل المحدّث ونشره داخلياً"]);
   save(); renderList(); toast("تم تحميل بيانات تجريبية");
 }
 
