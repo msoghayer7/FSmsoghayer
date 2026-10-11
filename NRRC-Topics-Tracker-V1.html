@@ -421,6 +421,7 @@ window.BRAND = {
   .brandline { display: flex; align-items: center; gap: 10px; }
   .brandline img { height: 42px; max-width: 90px; object-fit: contain; background: #fff; border-radius: 8px; padding: 3px; }
   #hdrOrg { font-size: 13px; opacity: .85; }
+  .ver { font-size: 12px; font-weight: 600; background: var(--gold); color: #1d2433; border-radius: 6px; padding: 0 7px; vertical-align: 3px; }
   .toolbar { display: flex; flex-wrap: wrap; gap: 8px; }
 
   .btn {
@@ -564,7 +565,7 @@ window.BRAND = {
 
 <header class="top">
   <div class="wrap">
-    <div class="brandline"><img id="hdrLogo" class="hidden" alt=""><div><h1>نظام متابعة المواضيع</h1><span id="hdrOrg"></span></div></div>
+    <div class="brandline"><img id="hdrLogo" class="hidden" alt=""><div><h1>نظام متابعة المواضيع <span class="ver" id="appVer">V1</span></h1><span id="hdrOrg"></span></div></div>
     <div class="toolbar">
       <button class="btn primary" style="background:#fff;color:var(--brand)" id="btnNew">＋ موضوع جديد</button>
       <button class="btn ghost" id="btnExcel">⬇ تصدير Excel</button>
@@ -2936,10 +2937,10 @@ $("#btnReportSettings").onclick = openSettingsDialog;
 </script>
 <script>
   // the multi-file version needs its folder: warn when opened without it (e.g. straight from a ZIP)
-  if (!window.TPL || !window.TPL.formal || !window.EMBEDDED_FONT_CSS || !window.ExcelJS) {
+  if (typeof TPL === "undefined" || !TPL.formal || !TPL.consult || !TPL.modern || !window.EMBEDDED_FONT_CSS || !window.ExcelJS || !window.BRAND) {
     const w = document.createElement("div");
     w.className = "load-warn";
-    w.textContent = "تعذّر تحميل بعض ملفات النظام. افتح الملف NRRC-Topics-Tracker.html (ملف واحد يعمل مباشرة)، أو فك ضغط المجلد كاملاً ثم افتح index.html.";
+    w.textContent = "تعذّر تحميل بعض ملفات النظام. افتح الملف NRRC-Topics-Tracker-V… .html (ملف واحد يعمل مباشرة)، أو فك ضغط المجلد كاملاً ثم افتح index.html.";
     document.body.prepend(w);
   }
 </script>
