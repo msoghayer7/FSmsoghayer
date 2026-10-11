@@ -51,8 +51,9 @@
 .t-formal .lh .r { font-family: Naskh; line-height: 1.55; }
 .t-formal .lh .r b { display: block; font-size: 15px; color: var(--g); font-weight: 700; }
 .t-formal .lh .r span { font-size: 12px; }
-.t-formal .lh .r.wide img { height: 68px; display: block; }
-.t-formal .lh .r.wide span { display: block; color: var(--g); font-weight: 700; margin-top: 2px; }
+.t-formal .lh { height: 76px; }
+.t-formal .lh .r.wide img { height: 54px; display: block; }
+.t-formal .lh .r.wide span { display: block; color: var(--g); font-weight: 700; font-size: 11px; line-height: 1.3; margin-top: 2px; }
 .t-formal .lh-mini img { height: 22px; align-self: center; }
 .t-formal .emb { width: 62px; height: 62px; margin: auto; display: block; object-fit: contain; }
 .t-formal .lh .l { justify-self: end; font-size: 10.5px; display: grid; grid-template-columns: auto auto; gap: 1px 10px; }
@@ -81,6 +82,7 @@
 .f-tbl tbody tr:nth-child(even) td { background: #fafaf7; }
 .f-tbl .num { font-variant-numeric: tabular-nums; text-align: center; white-space: nowrap; }
 .f-tbl.log td { vertical-align: top; }
+.f-tbl.log td:nth-child(3) { white-space: nowrap; }
 .t-formal .st { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .t-formal .st i { width: 8px; height: 8px; display: inline-block; }
 .f-stats { display: grid; grid-template-columns: repeat(6, 1fr); border: .75px solid var(--rule); margin: 4px 0 4px; }
@@ -286,7 +288,9 @@
 .t-modern .al .ic { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; flex: none; }
 .t-modern .al b { display: block; font-size: 10.5px; font-weight: 600; line-height: 1.4; }
 .t-modern .al span { font-size: 9.5px; color: var(--ink2); }
-.t-modern .stp { display: grid; position: relative; margin-top: 4px; }
+.t-modern .stp { display: grid; position: relative; margin-top: 4px; align-items: stretch; }
+.t-modern .st { display: flex; flex-direction: column; }
+.t-modern .st .c { flex: 1; }
 .t-modern .stp .line { position: absolute; top: 20px; height: 3px; background: var(--line); border-radius: 2px; }
 .t-modern .st { position: relative; text-align: center; padding: 0 6px; }
 .t-modern .st .n { width: 42px; height: 42px; margin: 0 auto; border-radius: 50%; display: grid; place-items: center; background: var(--c); box-shadow: 0 0 0 5px #fff, 0 4px 12px rgba(15, 23, 42, .18); position: relative; z-index: 1; }

@@ -258,11 +258,16 @@ class Pager {
 
   split(block) {
     const body = block.querySelector(".split-body");
+    const MIN = 2;                                       // never leave fewer rows than this on either page
+    if (body.children.length < 2 * MIN && !this.alone(block)) return false;   // short table: move it whole
     const rest = [];
     while (!this.fits() && body.children.length > 1) {
       const r = body.lastElementChild; r.remove(); rest.unshift(r);
     }
-    if (!this.fits() && !this.alone(block)) {
+    while (rest.length && rest.length < MIN && body.children.length > MIN) {    // avoid an orphan row
+      const r = body.lastElementChild; r.remove(); rest.unshift(r);
+    }
+    if ((!this.fits() || body.children.length < MIN) && !this.alone(block)) {
       body.append(...rest);
       block.remove();
       return false;

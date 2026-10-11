@@ -162,6 +162,8 @@
   .toast.show { opacity: .95; }
 
   .hidden { display: none !important; }
+  #rpOverlay:not(.show) { display: none; }
+  .load-warn { background: #fef3c7; color: #7c2d12; border-bottom: 1px solid #f59e0b; padding: 10px 16px; text-align: center; font-size: 14px; }
   .muted { color: var(--muted); }
 
   details.more { border: 1px dashed var(--line); border-radius: 8px; padding: 6px 10px; margin-bottom: 8px; }
@@ -1068,5 +1070,14 @@ function loadDemo() {
 <script src="tpl-formal.js"></script>
 <script src="tpl-consult.js"></script>
 <script src="tpl-modern.js"></script>
+<script>
+  // the multi-file version needs its folder: warn when opened without it (e.g. straight from a ZIP)
+  if (!window.TPL || !window.TPL.formal || !window.EMBEDDED_FONT_CSS || !window.ExcelJS) {
+    const w = document.createElement("div");
+    w.className = "load-warn";
+    w.textContent = "تعذّر تحميل بعض ملفات النظام. افتح الملف NRRC-Topics-Tracker.html (ملف واحد يعمل مباشرة)، أو فك ضغط المجلد كاملاً ثم افتح index.html.";
+    document.body.prepend(w);
+  }
+</script>
 </body>
 </html>

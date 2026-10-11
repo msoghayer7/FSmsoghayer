@@ -139,7 +139,8 @@
         <div class="fill" style="right:${sc.x(t.openDate)}%;width:${sc.x(lf || end) - sc.x(t.openDate)}%"></div>
         ${lf ? `<div class="fill late" style="right:${sc.x(lf)}%;width:${sc.x(end) - sc.x(lf)}%"></div>` : ""}
         ${real.map(e => `<span class="e" style="right:${sc.x(e.date)}%;background:${EC[e.type]}"></span>`).join("")}
-        ${sc.ticks.map(k => `<span class="s" style="right:${sc.x(k.t)}%">${k.label}</span>`).join("")}
+        ${sc.ticks.filter(k => [t.dueDate, t.status !== "closed" ? today : null].filter(Boolean).every(m => Math.abs(sc.x(k.t) - sc.x(m)) > 6))
+          .map(k => `<span class="s" style="right:${sc.x(k.t)}%">${k.label}</span>`).join("")}
         ${t.dueDate ? `<span class="m" style="right:${sc.x(t.dueDate)}%;--c:${RED}"><b>الاستحقاق ${fmtShort(t.dueDate)}</b></span>` : ""}
         ${t.status !== "closed" ? `<span class="m" style="right:${sc.x(today)}%;--c:#0f172a"><b>اليوم</b></span>` : ""}
       </div></div>`));

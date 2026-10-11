@@ -144,7 +144,7 @@
     out.push(sec(n++, "المسار الزمني"));
     out.push(strip(t));
     out.push(sec(n++, "سجل الإجراءات"));
-    out.push(h(`<table class="f-tbl log" data-split data-cont="سجل الإجراءات – ${esc(t.ref)}"><thead class="split-head"><tr><th style="width:30px">م</th><th style="width:82px">التاريخ</th><th style="width:84px">نوع الإجراء</th><th>التفاصيل</th><th style="width:130px">الجهة / المنفذ</th><th style="width:70px">الفاصل</th></tr></thead>
+    out.push(h(`<table class="f-tbl log" data-split data-cont="سجل الإجراءات – ${esc(t.ref)}"><thead class="split-head"><tr><th style="width:30px">م</th><th style="width:82px">التاريخ</th><th style="width:110px">نوع الإجراء</th><th>التفاصيل</th><th style="width:130px">الجهة / المنفذ</th><th style="width:70px">الفاصل</th></tr></thead>
       <tbody class="split-body">${evs.map((e, i) => `<tr><td class="num">${i + 1}</td><td class="num">${fmt(e.date)}</td><td>${EVT[e.type].ar}</td><td class="pre">${esc(e.text)}</td><td>${esc(e.by) || "—"}</td>
         <td class="num">${i ? dur(daysBetween(evs[i - 1].date, e.date)) : "—"}</td></tr>`).join("")}</tbody></table>`));
     out.push(h(`<div class="f-note"><b>${t.status === "closed" ? "نتيجة الإقفال" : "الوضع الحالي"}: </b>${topicHeadline(t)}.</div>`));
