@@ -1,0 +1,1040 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>متابعة المواضيع</title>
+<style>
+  :root {
+    --bg: #f4f6f9;
+    --card: #ffffff;
+    --ink: #1d2433;
+    --muted: #667085;
+    --line: #e3e7ee;
+    --brand: #1f4e79;
+    --brand-soft: #e8f0f8;
+    --open: #2563eb;
+    --progress: #d97706;
+    --hold: #7c3aed;
+    --closed: #15803d;
+    --danger: #dc2626;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Segoe UI", Tahoma, "Noto Sans Arabic", Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 16px; }
+
+  /* header */
+  header.top {
+    background: var(--brand);
+    color: #fff;
+  }
+  header.top .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between; }
+  header.top h1 { margin: 0; font-size: 20px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .btn {
+    border: 1px solid var(--line);
+    background: #fff;
+    border-radius: 8px;
+    padding: 7px 14px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn:hover { filter: brightness(0.96); }
+  .btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .btn.success { background: var(--closed); border-color: var(--closed); color: #fff; }
+  .btn.danger { color: var(--danger); border-color: #f3c2c2; }
+  .btn.ghost { background: transparent; border-color: rgba(255,255,255,.45); color: #fff; }
+  .btn.small { padding: 3px 10px; font-size: 13px; }
+
+  /* stats */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 16px 0; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px; cursor: pointer; }
+  .stat .n { font-size: 26px; font-weight: 700; }
+  .stat .l { color: var(--muted); font-size: 13px; }
+  .stat.active { outline: 2px solid var(--brand); }
+
+  /* filters */
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .filters input, .filters select, .field input, .field select, .field textarea {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 7px 10px;
+    background: #fff;
+  }
+  .filters input[type=search] { flex: 1 1 220px; }
+
+  /* topic list */
+  .list { display: grid; gap: 10px; }
+  .topic {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-inline-start: 5px solid var(--open);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    cursor: pointer;
+  }
+  .topic:hover { box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+  .topic .row1 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .topic .ref { color: var(--muted); font-family: Consolas, monospace; font-size: 13px; }
+  .topic .title { font-weight: 700; font-size: 16px; }
+  .topic .meta { color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 4px; }
+  .topic .last { margin-top: 6px; font-size: 14px; }
+  .topic .last b { color: var(--muted); font-weight: 600; }
+  .empty { text-align: center; color: var(--muted); padding: 40px 10px; background: var(--card); border: 1px dashed var(--line); border-radius: var(--radius); }
+
+  .badge { display: inline-block; border-radius: 999px; padding: 0 10px; font-size: 12px; font-weight: 600; color: #fff; line-height: 22px; }
+  .s-open { background: var(--open); }
+  .s-progress { background: var(--progress); }
+  .s-hold { background: var(--hold); }
+  .s-closed { background: var(--closed); }
+  .badge.overdue { background: var(--danger); }
+  .badge.light { background: #eef1f5; color: var(--ink); }
+  .topic.st-progress { border-inline-start-color: var(--progress); }
+  .topic.st-hold { border-inline-start-color: var(--hold); }
+  .topic.st-closed { border-inline-start-color: var(--closed); opacity: .85; }
+
+  /* detail */
+  .detail-head { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-top: 16px; }
+  .detail-head h2 { margin: 4px 0 8px; font-size: 20px; }
+  .kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px 16px; margin: 10px 0; }
+  .kv div span { display: block; color: var(--muted); font-size: 12px; }
+  .desc { white-space: pre-wrap; background: #fafbfc; border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 360px; gap: 16px; margin-top: 16px; align-items: start; }
+  @media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  .panel h3 { margin: 0 0 12px; font-size: 16px; }
+
+  /* vertical timeline */
+  .timeline { position: relative; padding-inline-start: 26px; }
+  .timeline::before { content: ""; position: absolute; inset-inline-start: 8px; top: 4px; bottom: 4px; width: 2px; background: var(--line); }
+  .ev { position: relative; padding: 0 0 16px; }
+  .ev::before {
+    content: ""; position: absolute; inset-inline-start: -23px; top: 6px;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #fff; border: 3px solid var(--c, var(--brand));
+  }
+  .ev .h { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .ev .d { font-weight: 700; font-family: Consolas, monospace; }
+  .ev .t { font-size: 12px; font-weight: 600; color: var(--c, var(--brand)); border: 1px solid currentColor; border-radius: 999px; padding: 0 8px; }
+  .ev .by { color: var(--muted); font-size: 13px; }
+  .ev .x { white-space: pre-wrap; margin-top: 2px; }
+  .ev .gap { color: var(--muted); font-size: 12px; }
+  .ev .tools { margin-inline-start: auto; display: flex; gap: 4px; }
+  .ev .tools button { border: none; background: none; cursor: pointer; color: var(--muted); padding: 0 4px; }
+  .ev .tools button:hover { color: var(--ink); }
+
+  .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+  .field label { font-size: 13px; color: var(--muted); }
+  .field textarea { min-height: 90px; resize: vertical; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* modal */
+  dialog { border: none; border-radius: 12px; padding: 0; width: min(620px, 94vw); box-shadow: 0 20px 50px rgba(0,0,0,.25); }
+  dialog::backdrop { background: rgba(15, 23, 42, .45); }
+  dialog form { padding: 18px 20px; }
+  dialog h3 { margin: 0 0 14px; }
+  .dlg-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+
+  .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: #111827; color: #fff; padding: 8px 18px; border-radius: 8px; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 50; }
+  .toast.show { opacity: .95; }
+
+  .hidden { display: none !important; }
+  .muted { color: var(--muted); }
+
+  /* ---------- print report (PDF) ---------- */
+  #report { display: none; }
+  @page { size: A4; margin: 14mm 12mm; }
+  @media print {
+    body { background: #fff; font-size: 11.5px; }
+    #app, header.top, .toast, dialog { display: none !important; }
+    #report { display: block; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+  .rp-head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid var(--brand); padding-bottom: 6px; margin-bottom: 10px; }
+  .rp-head h1 { margin: 0; color: var(--brand); font-size: 20px; }
+  .rp-head .sub { color: var(--muted); font-size: 11px; }
+  .rp-stats { display: flex; gap: 8px; margin: 8px 0 12px; }
+  .rp-stats div { flex: 1; border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; text-align: center; }
+  .rp-stats b { display: block; font-size: 16px; }
+  #report h2 { font-size: 14px; color: var(--brand); margin: 14px 0 6px; }
+  #report table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+  #report th, #report td { border: 1px solid #cfd6e0; padding: 3px 5px; text-align: right; vertical-align: top; }
+  #report th { background: var(--brand); color: #fff; }
+  #report tr:nth-child(even) td { background: #f6f8fb; }
+
+  /* Gantt overview in the report */
+  .gantt { border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+  .g-axis, .g-row { display: grid; grid-template-columns: 170px 1fr; align-items: center; gap: 6px; }
+  .g-row { min-height: 20px; border-top: 1px dashed #eef1f5; }
+  .g-label { font-size: 10px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .g-track { position: relative; height: 18px; }
+  .g-scale { position: relative; height: 16px; font-size: 9px; color: var(--muted); }
+  .g-scale span { position: absolute; transform: translateX(50%); white-space: nowrap; }
+  .g-bar { position: absolute; top: 5px; height: 8px; border-radius: 4px; opacity: .45; }
+  .g-dot { position: absolute; top: 3px; width: 10px; height: 10px; margin-right: -5px; border-radius: 50%; border: 2px solid #fff; }
+  .g-legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 9.5px; color: var(--muted); margin-top: 4px; }
+  .g-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-inline-end: 3px; vertical-align: middle; }
+
+  .rp-topic { border: 1px solid #cfd6e0; border-radius: 8px; padding: 8px 10px; margin: 10px 0; }
+  .rp-topic .tt { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .rp-topic .tt h3 { margin: 0; font-size: 13.5px; }
+  .rp-topic .info { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px 10px; font-size: 10.5px; margin: 6px 0; }
+  .rp-topic .info span { color: var(--muted); }
+  .rp-topic .timeline { margin-top: 6px; }
+  .rp-topic .ev { padding-bottom: 8px; break-inside: avoid; }
+  .rp-topic .ev .tools { display: none; }
+  .rp-topic .desc { font-size: 10.5px; padding: 4px 8px; }
+  .rp-foot { margin-top: 12px; color: var(--muted); font-size: 9.5px; text-align: center; }
+  .pb { break-before: page; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <h1>📋 نظام متابعة المواضيع</h1>
+    <div class="toolbar">
+      <button class="btn primary" style="background:#fff;color:var(--brand)" id="btnNew">＋ موضوع جديد</button>
+      <button class="btn ghost" id="btnExcel">⬇ تصدير Excel</button>
+      <button class="btn ghost" id="btnPdf">🖨 تقرير PDF</button>
+      <button class="btn ghost" id="btnBackup">💾 نسخة احتياطية</button>
+      <button class="btn ghost" id="btnRestore">↺ استعادة</button>
+      <input type="file" id="fileRestore" accept="application/json,.json" class="hidden">
+    </div>
+  </div>
+</header>
+
+<main id="app" class="wrap">
+  <!-- list view -->
+  <section id="viewList">
+    <div class="stats" id="stats"></div>
+    <div class="filters">
+      <input type="search" id="fSearch" placeholder="بحث في العنوان أو الوصف أو الأحداث…">
+      <select id="fStatus">
+        <option value="active">كل غير المقفلة</option>
+        <option value="all">الكل</option>
+        <option value="open">مفتوح</option>
+        <option value="progress">قيد الإجراء</option>
+        <option value="hold">معلّق</option>
+        <option value="closed">مقفل</option>
+        <option value="overdue">متأخر عن الاستحقاق</option>
+      </select>
+      <select id="fCategory"><option value="">كل التصنيفات</option></select>
+      <select id="fSort">
+        <option value="last">الأحدث تحديثاً</option>
+        <option value="open">تاريخ الفتح</option>
+        <option value="due">تاريخ الاستحقاق</option>
+        <option value="ref">الرقم المرجعي</option>
+      </select>
+    </div>
+    <div class="list" id="list"></div>
+  </section>
+
+  <!-- detail view -->
+  <section id="viewDetail" class="hidden">
+    <button class="btn" id="btnBack" style="margin-top:16px">→ رجوع للقائمة</button>
+    <div class="detail-head" id="detailHead"></div>
+    <div class="grid2">
+      <div class="panel">
+        <h3>المخطط الزمني للموضوع</h3>
+        <div class="timeline" id="detailTimeline"></div>
+      </div>
+      <div class="panel" id="eventPanel">
+        <h3 id="eventFormTitle">تسجيل حدث / تحديث</h3>
+        <form id="eventForm" autocomplete="off">
+          <div class="row">
+            <div class="field"><label>التاريخ</label><input type="date" name="date" required></div>
+            <div class="field"><label>نوع الحدث</label><select name="type" id="evType"></select></div>
+          </div>
+          <div class="field"><label>ما تم</label><textarea name="text" required placeholder="وصف الإجراء أو التحديث…"></textarea></div>
+          <div class="field"><label>بواسطة / الجهة (اختياري)</label><input name="by"></div>
+          <div class="dlg-actions">
+            <button type="button" class="btn hidden" id="btnEvCancel">إلغاء التعديل</button>
+            <button class="btn primary" id="btnEvSave">إضافة للمخطط الزمني</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- topic dialog -->
+<dialog id="dlgTopic">
+  <form id="topicForm" method="dialog" autocomplete="off">
+    <h3 id="topicFormTitle">موضوع جديد</h3>
+    <div class="field"><label>عنوان الموضوع *</label><input name="title" required></div>
+    <div class="field"><label>الوصف / الخلفية</label><textarea name="description"></textarea></div>
+    <div class="row">
+      <div class="field"><label>التصنيف</label><input name="category" list="catList"></div>
+      <div class="field"><label>الجهة ذات العلاقة</label><input name="party"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>المسؤول عن المتابعة</label><input name="owner"></div>
+      <div class="field"><label>الأولوية</label>
+        <select name="priority"><option value="high">عالية</option><option value="medium" selected>متوسطة</option><option value="low">منخفضة</option></select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field"><label>تاريخ الفتح *</label><input type="date" name="openDate" required></div>
+      <div class="field"><label>تاريخ الاستحقاق المستهدف</label><input type="date" name="dueDate"></div>
+    </div>
+    <div class="field" id="statusField"><label>الحالة</label>
+      <select name="status"><option value="open">مفتوح</option><option value="progress">قيد الإجراء</option><option value="hold">معلّق</option></select>
+    </div>
+    <div class="dlg-actions">
+      <button type="button" class="btn" data-close>إلغاء</button>
+      <button class="btn primary" value="ok">حفظ</button>
+    </div>
+  </form>
+</dialog>
+<datalist id="catList"></datalist>
+
+<!-- close dialog -->
+<dialog id="dlgClose">
+  <form id="closeForm" method="dialog" autocomplete="off">
+    <h3>إقفال الموضوع</h3>
+    <div class="field"><label>تاريخ الإقفال *</label><input type="date" name="date" required></div>
+    <div class="field"><label>ملخص الإقفال / النتيجة *</label><textarea name="text" required></textarea></div>
+    <div class="field"><label>بواسطة (اختياري)</label><input name="by"></div>
+    <div class="dlg-actions">
+      <button type="button" class="btn" data-close>إلغاء</button>
+      <button class="btn success" value="ok">تأكيد الإقفال</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- print area -->
+<div id="report"></div>
+<div class="toast" id="toast"></div>
+
+<script src="lib/exceljs.min.js"></script>
+<script>
+"use strict";
+
+/* ================= constants ================= */
+const STORE_KEY = "topicTracker.v1";
+
+const STATUS = {
+  open:     { ar: "مفتوح",       color: "#2563eb", xl: "FFDBEAFE" },
+  progress: { ar: "قيد الإجراء", color: "#d97706", xl: "FFFDE7C3" },
+  hold:     { ar: "معلّق",        color: "#7c3aed", xl: "FFEDE4FE" },
+  closed:   { ar: "مقفل",        color: "#15803d", xl: "FFD1FAE0" },
+};
+const PRIORITY = { high: "عالية", medium: "متوسطة", low: "منخفضة" };
+
+// event types; `manual` = selectable in the event form
+const EVT = {
+  create:   { ar: "فتح الموضوع",  color: "#1f4e79" },
+  update:   { ar: "تحديث",        color: "#2563eb", manual: true },
+  followup: { ar: "متابعة",       color: "#0891b2", manual: true },
+  meeting:  { ar: "اجتماع",       color: "#9333ea", manual: true },
+  letter:   { ar: "مراسلة",       color: "#64748b", manual: true },
+  action:   { ar: "إجراء",        color: "#d97706", manual: true },
+  decision: { ar: "قرار",         color: "#be185d", manual: true },
+  status:   { ar: "تغيير حالة",   color: "#7c3aed" },
+  close:    { ar: "إقفال",        color: "#15803d" },
+  reopen:   { ar: "إعادة فتح",    color: "#dc2626" },
+};
+
+/* ================= helpers ================= */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+const pad = n => String(n).padStart(2, "0");
+const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+const toUTC = iso => { const [y, m, d] = iso.split("-").map(Number); return Date.UTC(y, m - 1, d); };
+const daysBetween = (a, b) => Math.round((toUTC(b) - toUTC(a)) / 86400000);
+const fmt = iso => iso ? iso.replaceAll("-", "/") : "—";
+const isoFromUTC = t => { const d = new Date(t); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`; };
+const dateObj = iso => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d); };
+
+function toast(msg) {
+  const t = $("#toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+function download(blob, name) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+/* ================= storage ================= */
+let db = load();
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      if (d && Array.isArray(d.topics)) return { seq: d.seq || d.topics.length, topics: d.topics };
+    }
+  } catch (e) { console.warn(e); }
+  return { seq: 0, topics: [] };
+}
+
+function save() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); }
+  catch (e) { alert("تعذر الحفظ في المتصفح: " + e.message); }
+}
+
+/* ================= model ================= */
+const getTopic = id => db.topics.find(t => t.id === id);
+
+function sortedEvents(t) {
+  return [...t.events].sort((a, b) => a.date.localeCompare(b.date) || a.seq - b.seq);
+}
+function lastEvent(t) { const e = sortedEvents(t); return e[e.length - 1]; }
+function isOverdue(t) { return t.status !== "closed" && t.dueDate && t.dueDate < todayISO(); }
+function endDate(t) { return t.status === "closed" ? t.closeDate : todayISO(); }
+function ageDays(t) { return Math.max(0, daysBetween(t.openDate, endDate(t))); }
+
+function addEvent(t, ev) {
+  t.evSeq = (t.evSeq || 0) + 1;
+  t.events.push({ id: uid(), seq: t.evSeq, by: "", ...ev });
+}
+
+function createTopic(data) {
+  db.seq += 1;
+  const t = {
+    id: uid(),
+    ref: "M-" + String(db.seq).padStart(3, "0"),
+    title: data.title.trim(),
+    description: data.description || "",
+    category: data.category || "",
+    party: data.party || "",
+    owner: data.owner || "",
+    priority: data.priority || "medium",
+    status: data.status || "open",
+    openDate: data.openDate || todayISO(),
+    dueDate: data.dueDate || "",
+    closeDate: "",
+    closeNote: "",
+    events: [],
+  };
+  addEvent(t, { date: t.openDate, type: "create", text: "تسجيل الموضوع" + (t.description ? ": " + t.description : "") });
+  db.topics.push(t);
+  return t;
+}
+
+/* ================= list view ================= */
+const ui = { view: "list", current: null, editingEvent: null };
+
+function filteredTopics() {
+  const q = $("#fSearch").value.trim().toLowerCase();
+  const st = $("#fStatus").value;
+  const cat = $("#fCategory").value;
+  const sort = $("#fSort").value;
+
+  let arr = db.topics.filter(t => {
+    if (st === "active" && t.status === "closed") return false;
+    if (st === "overdue" && !isOverdue(t)) return false;
+    if (STATUS[st] && t.status !== st) return false;
+    if (cat && t.category !== cat) return false;
+    if (q) {
+      const hay = [t.ref, t.title, t.description, t.owner, t.party, t.category, ...t.events.map(e => e.text + " " + e.by)].join(" ").toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const lastD = t => lastEvent(t)?.date || t.openDate;
+  const cmp = {
+    last: (a, b) => lastD(b).localeCompare(lastD(a)),
+    open: (a, b) => b.openDate.localeCompare(a.openDate),
+    due:  (a, b) => (a.dueDate || "9999").localeCompare(b.dueDate || "9999"),
+    ref:  (a, b) => a.ref.localeCompare(b.ref),
+  }[sort];
+  return arr.sort(cmp);
+}
+
+function renderStats() {
+  const c = { all: db.topics.length, active: 0, open: 0, progress: 0, hold: 0, closed: 0, overdue: 0 };
+  db.topics.forEach(t => { c[t.status]++; if (t.status !== "closed") c.active++; if (isOverdue(t)) c.overdue++; });
+  const cur = $("#fStatus").value;
+  const tiles = [
+    ["all", "إجمالي المواضيع", "var(--ink)"],
+    ["active", "غير مقفلة", "var(--brand)"],
+    ["progress", "قيد الإجراء", "var(--progress)"],
+    ["hold", "معلّقة", "var(--hold)"],
+    ["overdue", "متأخرة", "var(--danger)"],
+    ["closed", "مقفلة", "var(--closed)"],
+  ];
+  $("#stats").innerHTML = tiles.map(([k, l, col]) =>
+    `<div class="stat ${cur === k ? "active" : ""}" data-k="${k}"><div class="n" style="color:${col}">${c[k]}</div><div class="l">${l}</div></div>`).join("");
+}
+
+function renderCategories() {
+  const cats = [...new Set(db.topics.map(t => t.category).filter(Boolean))].sort();
+  const sel = $("#fCategory"), cur = sel.value;
+  sel.innerHTML = `<option value="">كل التصنيفات</option>` + cats.map(c => `<option>${esc(c)}</option>`).join("");
+  sel.value = cats.includes(cur) ? cur : "";
+  $("#catList").innerHTML = cats.map(c => `<option value="${esc(c)}">`).join("");
+}
+
+function statusBadges(t) {
+  let h = `<span class="badge s-${t.status}">${STATUS[t.status].ar}</span>`;
+  if (isOverdue(t)) h += ` <span class="badge overdue">متأخر ${daysBetween(t.dueDate, todayISO())} يوم</span>`;
+  return h;
+}
+
+function renderList() {
+  renderStats();
+  renderCategories();
+  const arr = filteredTopics();
+  if (!db.topics.length) {
+    $("#list").innerHTML = `<div class="empty">لا توجد مواضيع بعد.<br><br>
+      <button class="btn primary" onclick="openTopicDialog()">＋ سجّل أول موضوع</button>
+      <button class="btn" onclick="loadDemo()">تحميل بيانات تجريبية</button></div>`;
+    return;
+  }
+  if (!arr.length) { $("#list").innerHTML = `<div class="empty">لا توجد نتائج مطابقة للتصفية الحالية.</div>`; return; }
+
+  $("#list").innerHTML = arr.map(t => {
+    const le = lastEvent(t);
+    return `<div class="topic st-${t.status}" data-id="${t.id}">
+      <div class="row1"><span class="ref">${esc(t.ref)}</span><span class="title">${esc(t.title)}</span>${statusBadges(t)}
+        ${t.priority === "high" ? `<span class="badge light">أولوية عالية</span>` : ""}</div>
+      <div class="meta">
+        ${t.category ? `<span>🏷 ${esc(t.category)}</span>` : ""}
+        ${t.owner ? `<span>👤 ${esc(t.owner)}</span>` : ""}
+        <span>📅 فُتح ${fmt(t.openDate)}</span>
+        ${t.dueDate ? `<span>⏳ الاستحقاق ${fmt(t.dueDate)}</span>` : ""}
+        ${t.status === "closed" ? `<span>✔ أُقفل ${fmt(t.closeDate)}</span>` : ""}
+        <span>⏱ ${ageDays(t)} يوم</span>
+        <span>📌 ${t.events.length} حدث</span>
+      </div>
+      ${le ? `<div class="last"><b>آخر مستجد (${fmt(le.date)} – ${EVT[le.type].ar}):</b> ${esc(le.text.length > 160 ? le.text.slice(0, 160) + "…" : le.text)}</div>` : ""}
+    </div>`;
+  }).join("");
+}
+
+/* ================= detail view ================= */
+function timelineHTML(t, withTools) {
+  const evs = sortedEvents(t);
+  return evs.map((e, i) => {
+    const prev = evs[i - 1];
+    const gap = prev ? daysBetween(prev.date, e.date) : null;
+    const tools = withTools ? `<span class="tools">
+        <button title="تعديل" onclick="editEvent('${e.id}')">✎</button>
+        ${e.type !== "create" ? `<button title="حذف" onclick="deleteEvent('${e.id}')">🗑</button>` : ""}</span>` : "";
+    return `<div class="ev" style="--c:${EVT[e.type].color}">
+      <div class="h"><span class="d">${fmt(e.date)}</span><span class="t">${EVT[e.type].ar}</span>
+        ${e.by ? `<span class="by">${esc(e.by)}</span>` : ""}
+        ${gap !== null ? `<span class="gap">(+${gap} يوم)</span>` : ""}${tools}</div>
+      <div class="x">${esc(e.text)}</div>
+    </div>`;
+  }).join("");
+}
+
+function renderDetail() {
+  const t = getTopic(ui.current);
+  if (!t) { showList(); return; }
+  const closed = t.status === "closed";
+  $("#detailHead").innerHTML = `
+    <div class="row1" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span class="muted" style="font-family:Consolas,monospace">${esc(t.ref)}</span>${statusBadges(t)}
+      <span class="badge light">أولوية ${PRIORITY[t.priority]}</span></div>
+    <h2>${esc(t.title)}</h2>
+    <div class="kv">
+      <div><span>التصنيف</span>${esc(t.category) || "—"}</div>
+      <div><span>الجهة ذات العلاقة</span>${esc(t.party) || "—"}</div>
+      <div><span>المسؤول</span>${esc(t.owner) || "—"}</div>
+      <div><span>تاريخ الفتح</span>${fmt(t.openDate)}</div>
+      <div><span>تاريخ الاستحقاق</span>${fmt(t.dueDate)}</div>
+      <div><span>تاريخ الإقفال</span>${fmt(t.closeDate)}</div>
+      <div><span>المدة</span>${ageDays(t)} يوم${closed ? "" : " (حتى اليوم)"}</div>
+    </div>
+    ${t.description ? `<div class="desc">${esc(t.description)}</div>` : ""}
+    <div class="actions">
+      <button class="btn" onclick="openTopicDialog('${t.id}')">✎ تعديل البيانات</button>
+      ${closed ? `<button class="btn" onclick="reopenTopic()">↺ إعادة فتح</button>`
+               : `<button class="btn success" onclick="openCloseDialog()">✔ إقفال الموضوع</button>`}
+      <button class="btn" onclick="printReport([getTopic(ui.current)], true)">🖨 تقرير PDF للموضوع</button>
+      <button class="btn" onclick="exportExcel([getTopic(ui.current)])">⬇ Excel للموضوع</button>
+      <button class="btn danger" onclick="deleteTopic()">حذف الموضوع</button>
+    </div>`;
+  $("#detailTimeline").innerHTML = timelineHTML(t, true);
+  $("#eventPanel").classList.toggle("hidden", closed && !ui.editingEvent);
+}
+
+function resetEventForm() {
+  ui.editingEvent = null;
+  const f = $("#eventForm");
+  f.reset();
+  f.date.value = todayISO();
+  $("#evType").innerHTML = Object.entries(EVT).filter(([, v]) => v.manual).map(([k, v]) => `<option value="${k}">${v.ar}</option>`).join("");
+  $("#eventFormTitle").textContent = "تسجيل حدث / تحديث";
+  $("#btnEvSave").textContent = "إضافة للمخطط الزمني";
+  $("#btnEvCancel").classList.add("hidden");
+}
+
+function editEvent(id) {
+  const t = getTopic(ui.current), e = t.events.find(x => x.id === id);
+  ui.editingEvent = id;
+  const f = $("#eventForm");
+  // system event types are kept as-is, only manual types are switchable
+  $("#evType").innerHTML = Object.entries(EVT).filter(([k, v]) => v.manual || k === e.type).map(([k, v]) => `<option value="${k}">${v.ar}</option>`).join("");
+  f.date.value = e.date; f.type.value = e.type; f.text.value = e.text; f.by.value = e.by || "";
+  f.type.disabled = !EVT[e.type].manual;
+  $("#eventFormTitle").textContent = "تعديل حدث";
+  $("#btnEvSave").textContent = "حفظ التعديل";
+  $("#btnEvCancel").classList.remove("hidden");
+  $("#eventPanel").classList.remove("hidden");
+  $("#eventPanel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  f.text.focus();
+}
+
+function deleteEvent(id) {
+  const t = getTopic(ui.current);
+  if (!confirm("حذف هذا الحدث من المخطط الزمني؟")) return;
+  const e = t.events.find(x => x.id === id);
+  t.events = t.events.filter(x => x.id !== id);
+  if (e.type === "close" && t.status === "closed") { t.status = "open"; t.closeDate = ""; t.closeNote = ""; }
+  save(); renderDetail(); toast("تم حذف الحدث");
+}
+
+$("#eventForm").addEventListener("submit", ev => {
+  ev.preventDefault();
+  const f = ev.target, t = getTopic(ui.current);
+  const data = { date: f.date.value, type: f.type.value, text: f.text.value.trim(), by: f.by.value.trim() };
+  if (!data.text) return;
+  if (ui.editingEvent) {
+    const e = t.events.find(x => x.id === ui.editingEvent);
+    Object.assign(e, data);
+    if (e.type === "create") t.openDate = e.date;
+    if (e.type === "close") { t.closeDate = e.date; t.closeNote = e.text; }
+    toast("تم تعديل الحدث");
+  } else {
+    if (data.date < t.openDate && !confirm("تاريخ الحدث يسبق تاريخ فتح الموضوع. متابعة؟")) return;
+    addEvent(t, data);
+    if (t.status === "open" && data.type !== "followup") t.status = "progress";
+    toast("تمت إضافة الحدث");
+  }
+  f.type.disabled = false;
+  save(); resetEventForm(); renderDetail();
+});
+$("#btnEvCancel").onclick = () => { $("#eventForm").type.disabled = false; resetEventForm(); renderDetail(); };
+
+/* ================= topic dialog ================= */
+let editingTopicId = null;
+
+function openTopicDialog(id) {
+  editingTopicId = id || null;
+  const f = $("#topicForm"), t = id ? getTopic(id) : null;
+  f.reset();
+  $("#topicFormTitle").textContent = t ? `تعديل الموضوع ${t.ref}` : "موضوع جديد";
+  $("#statusField").classList.toggle("hidden", !!(t && t.status === "closed"));
+  if (t) {
+    ["title", "description", "category", "party", "owner", "priority", "openDate", "dueDate"].forEach(k => f[k].value = t[k] || "");
+    if (t.status !== "closed") f.status.value = t.status;
+  } else {
+    f.openDate.value = todayISO();
+  }
+  $("#dlgTopic").showModal();
+  f.title.focus();
+}
+
+$("#topicForm").addEventListener("submit", ev => {
+  if (ev.submitter?.value !== "ok") return;
+  const f = ev.target;
+  const data = Object.fromEntries(["title", "description", "category", "party", "owner", "priority", "openDate", "dueDate", "status"].map(k => [k, f[k].value.trim()]));
+  if (editingTopicId) {
+    const t = getTopic(editingTopicId);
+    const oldStatus = t.status;
+    ["title", "description", "category", "party", "owner", "priority", "dueDate"].forEach(k => t[k] = data[k]);
+    if (data.openDate !== t.openDate) {
+      t.openDate = data.openDate;
+      const ce = t.events.find(e => e.type === "create"); if (ce) ce.date = data.openDate;
+    }
+    if (oldStatus !== "closed" && data.status !== oldStatus) {
+      t.status = data.status;
+      addEvent(t, { date: todayISO(), type: "status", text: `تغيير الحالة من «${STATUS[oldStatus].ar}» إلى «${STATUS[data.status].ar}»` });
+    }
+    save(); renderDetail(); toast("تم حفظ التعديلات");
+  } else {
+    const t = createTopic(data);
+    save(); showDetail(t.id); toast(`تم تسجيل الموضوع ${t.ref}`);
+  }
+});
+
+document.querySelectorAll("dialog [data-close]").forEach(b => b.onclick = () => b.closest("dialog").close());
+
+/* ================= close / reopen / delete ================= */
+function openCloseDialog() {
+  const f = $("#closeForm"); f.reset(); f.date.value = todayISO();
+  $("#dlgClose").showModal(); f.text.focus();
+}
+
+$("#closeForm").addEventListener("submit", ev => {
+  if (ev.submitter?.value !== "ok") return;
+  const f = ev.target, t = getTopic(ui.current);
+  if (f.date.value < t.openDate) { ev.preventDefault(); alert("تاريخ الإقفال يسبق تاريخ الفتح."); return; }
+  t.status = "closed"; t.closeDate = f.date.value; t.closeNote = f.text.value.trim();
+  addEvent(t, { date: t.closeDate, type: "close", text: t.closeNote, by: f.by.value.trim() });
+  save(); resetEventForm(); renderDetail(); toast("تم إقفال الموضوع");
+});
+
+function reopenTopic() {
+  const t = getTopic(ui.current);
+  const reason = prompt("سبب إعادة الفتح:");
+  if (reason === null) return;
+  t.status = "progress"; t.closeDate = ""; t.closeNote = "";
+  addEvent(t, { date: todayISO(), type: "reopen", text: reason || "إعادة فتح الموضوع" });
+  save(); resetEventForm(); renderDetail(); toast("تمت إعادة فتح الموضوع");
+}
+
+function deleteTopic() {
+  const t = getTopic(ui.current);
+  if (!confirm(`حذف الموضوع ${t.ref} «${t.title}» نهائياً مع كل أحداثه؟`)) return;
+  db.topics = db.topics.filter(x => x.id !== t.id);
+  save(); showList(); toast("تم حذف الموضوع");
+}
+
+/* ================= navigation ================= */
+function showList() {
+  ui.view = "list"; ui.current = null;
+  $("#viewDetail").classList.add("hidden"); $("#viewList").classList.remove("hidden");
+  if (location.hash) history.replaceState(null, "", location.pathname);
+  renderList();
+}
+function showDetail(id) {
+  ui.view = "detail"; ui.current = id;
+  $("#viewList").classList.add("hidden"); $("#viewDetail").classList.remove("hidden");
+  location.hash = "t=" + id;
+  resetEventForm(); renderDetail(); window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", () => {
+  const m = location.hash.match(/t=([\w-]+)/);
+  if (m && getTopic(m[1])) { if (ui.current !== m[1]) showDetail(m[1]); }
+  else if (ui.view === "detail") showList();
+});
+
+$("#list").addEventListener("click", e => { const c = e.target.closest(".topic"); if (c) showDetail(c.dataset.id); });
+$("#stats").addEventListener("click", e => { const s = e.target.closest(".stat"); if (s) { $("#fStatus").value = s.dataset.k; renderList(); } });
+["fSearch", "fStatus", "fCategory", "fSort"].forEach(id => $("#" + id).addEventListener("input", renderList));
+$("#btnBack").onclick = showList;
+$("#btnNew").onclick = () => openTopicDialog();
+
+/* ================= backup / restore ================= */
+$("#btnBackup").onclick = () => {
+  download(new Blob([JSON.stringify(db, null, 2)], { type: "application/json" }), `مواضيع-نسخة-احتياطية-${todayISO()}.json`);
+};
+$("#btnRestore").onclick = () => $("#fileRestore").click();
+$("#fileRestore").onchange = async e => {
+  const file = e.target.files[0]; e.target.value = "";
+  if (!file) return;
+  try {
+    const d = JSON.parse(await file.text());
+    if (!d || !Array.isArray(d.topics)) throw new Error("ملف غير صالح");
+    if (!confirm(`استعادة ${d.topics.length} موضوع؟ سيتم استبدال البيانات الحالية.`)) return;
+    db = { seq: d.seq || d.topics.length, topics: d.topics };
+    save(); showList(); toast("تمت الاستعادة");
+  } catch (err) { alert("تعذرت الاستعادة: " + err.message); }
+};
+
+/* ================= PDF report (browser print) ================= */
+function scopeLabel() {
+  const st = $("#fStatus");
+  let s = st.options[st.selectedIndex].text;
+  if ($("#fCategory").value) s += " – " + $("#fCategory").value;
+  if ($("#fSearch").value.trim()) s += ` – بحث: «${$("#fSearch").value.trim()}»`;
+  return s;
+}
+
+function ganttHTML(topics) {
+  const starts = topics.map(t => t.openDate);
+  const ends = topics.map(t => [endDate(t), ...t.events.map(e => e.date)].sort().pop());
+  const min = starts.sort()[0], max = ends.sort().pop();
+  const span = Math.max(1, daysBetween(min, max));
+  const pos = iso => (daysBetween(min, iso) / span) * 100;
+
+  // ~6 evenly spaced scale labels
+  const ticks = [];
+  for (let i = 0; i <= 5; i++) ticks.push(isoFromUTC(toUTC(min) + Math.round(span * i / 5) * 86400000));
+  const scale = ticks.map((d, i) => {
+    const at = i === 0 ? "right:0;transform:none" : i === 5 ? "left:0;transform:none" : `right:${i * 20}%`;
+    return `<span style="${at}">${fmt(d)}</span>`;
+  }).join("");
+
+  const rows = topics.map(t => {
+    const s = pos(t.openDate), e = pos(endDate(t));
+    const dots = sortedEvents(t).map(ev =>
+      `<i class="g-dot" style="right:${pos(ev.date)}%;background:${EVT[ev.type].color}" title="${esc(fmt(ev.date) + " " + EVT[ev.type].ar)}"></i>`).join("");
+    return `<div class="g-row"><div class="g-label">${esc(t.ref)} – ${esc(t.title)}</div>
+      <div class="g-track"><div class="g-bar" style="right:${s}%;width:${Math.max(0.5, e - s)}%;background:${STATUS[t.status].color}"></div>${dots}</div></div>`;
+  }).join("");
+
+  const usedTypes = [...new Set(topics.flatMap(t => t.events.map(e => e.type)))];
+  const legend = usedTypes.map(k => `<span><i style="background:${EVT[k].color}"></i>${EVT[k].ar}</span>`).join("");
+  return `<div class="gantt"><div class="g-axis"><div></div><div class="g-scale">${scale}</div></div>${rows}
+    <div class="g-legend">${legend}</div></div>`;
+}
+
+function topicBlockHTML(t) {
+  return `<div class="rp-topic">
+    <div class="tt"><h3>${esc(t.ref)} – ${esc(t.title)}</h3>${statusBadges(t)}</div>
+    <div class="info">
+      <div><span>التصنيف: </span>${esc(t.category) || "—"}</div>
+      <div><span>الجهة: </span>${esc(t.party) || "—"}</div>
+      <div><span>المسؤول: </span>${esc(t.owner) || "—"}</div>
+      <div><span>الأولوية: </span>${PRIORITY[t.priority]}</div>
+      <div><span>الفتح: </span>${fmt(t.openDate)}</div>
+      <div><span>الاستحقاق: </span>${fmt(t.dueDate)}</div>
+      <div><span>الإقفال: </span>${fmt(t.closeDate)}</div>
+      <div><span>المدة: </span>${ageDays(t)} يوم</div>
+    </div>
+    ${t.description ? `<div class="desc">${esc(t.description)}</div>` : ""}
+    <div class="timeline">${timelineHTML(t, false)}</div>
+  </div>`;
+}
+
+function printReport(topics, single) {
+  topics = topics || filteredTopics();
+  if (!topics.length) { alert("لا توجد مواضيع ضمن التصفية الحالية."); return; }
+  const now = new Date();
+  const c = { open: 0, progress: 0, hold: 0, closed: 0 };
+  topics.forEach(t => c[t.status]++);
+  const overdue = topics.filter(isOverdue).length;
+
+  const summary = `<table><thead><tr>
+      <th>المرجع</th><th>الموضوع</th><th>الحالة</th><th>المسؤول</th><th>الفتح</th><th>الاستحقاق</th><th>الإقفال</th><th>المدة</th><th>آخر مستجد</th></tr></thead><tbody>
+      ${topics.map(t => { const le = lastEvent(t); return `<tr>
+        <td style="white-space:nowrap">${esc(t.ref)}</td><td>${esc(t.title)}</td><td>${STATUS[t.status].ar}${isOverdue(t) ? " (متأخر)" : ""}</td><td>${esc(t.owner)}</td>
+        <td>${fmt(t.openDate)}</td><td>${fmt(t.dueDate)}</td><td>${fmt(t.closeDate)}</td><td>${ageDays(t)}</td>
+        <td>${le ? fmt(le.date) + " – " + esc(le.text.length > 90 ? le.text.slice(0, 90) + "…" : le.text) : ""}</td></tr>`; }).join("")}
+    </tbody></table>`;
+
+  const title = single ? `تقرير متابعة: ${topics[0].ref}` : "تقرير متابعة المواضيع";
+  $("#report").innerHTML = `
+    <div class="rp-head"><div><h1>${esc(title)}</h1>
+      <div class="sub">${single ? esc(topics[0].title) : "النطاق: " + esc(scopeLabel())}</div></div>
+      <div class="sub">تاريخ الإصدار: ${fmt(todayISO())} ${pad(now.getHours())}:${pad(now.getMinutes())}</div></div>
+    ${single ? "" : `<div class="rp-stats">
+      <div><b>${topics.length}</b>الإجمالي</div><div><b>${c.open}</b>مفتوح</div><div><b>${c.progress}</b>قيد الإجراء</div>
+      <div><b>${c.hold}</b>معلّق</div><div><b style="color:var(--danger)">${overdue}</b>متأخر</div><div><b style="color:var(--closed)">${c.closed}</b>مقفل</div></div>
+      <h2>ملخص المواضيع</h2>${summary}`}
+    <h2>المخطط الزمني العام</h2>${ganttHTML(topics)}
+    ${single ? "" : `<h2 class="pb">تفاصيل المواضيع والمخطط الزمني لكل موضوع</h2>`}
+    ${single ? `<h2>تفاصيل الموضوع</h2>` : ""}
+    ${topics.map(topicBlockHTML).join("")}
+    <div class="rp-foot">نظام متابعة المواضيع – ${fmt(todayISO())}</div>`;
+
+  const oldTitle = document.title;
+  document.title = single ? `تقرير-${topics[0].ref}-${todayISO()}` : `تقرير-المواضيع-${todayISO()}`;
+  window.addEventListener("afterprint", () => { document.title = oldTitle; }, { once: true });
+  window.print();
+}
+$("#btnPdf").onclick = () => printReport();
+
+/* ================= Excel export ================= */
+const XL = {
+  brand: "FF1F4E79",
+  head: { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F4E79" } },
+  border: { top: { style: "thin", color: { argb: "FFCFD6E0" } }, left: { style: "thin", color: { argb: "FFCFD6E0" } },
+            bottom: { style: "thin", color: { argb: "FFCFD6E0" } }, right: { style: "thin", color: { argb: "FFCFD6E0" } } },
+  fill: argb => ({ type: "pattern", pattern: "solid", fgColor: { argb } }),
+  hex: c => "FF" + c.replace("#", "").toUpperCase(),
+};
+
+function styleHeader(row) {
+  row.eachCell(c => {
+    c.fill = XL.head; c.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    c.alignment = { vertical: "middle", horizontal: "center", wrapText: true }; c.border = XL.border;
+  });
+  row.height = 24;
+}
+
+function addTitle(ws, text, cols) {
+  ws.mergeCells(1, 1, 1, cols);
+  const c = ws.getCell(1, 1);
+  c.value = text; c.font = { bold: true, size: 14, color: { argb: XL.brand } };
+  c.alignment = { horizontal: "right", vertical: "middle" };
+  ws.getRow(1).height = 26;
+  ws.mergeCells(2, 1, 2, cols);
+  ws.getCell(2, 1).value = `تاريخ الإصدار: ${fmt(todayISO())}`;
+  ws.getCell(2, 1).font = { color: { argb: "FF667085" }, size: 10 };
+}
+
+async function exportExcel(topics) {
+  if (typeof ExcelJS === "undefined") { alert("مكتبة Excel غير محملة (lib/exceljs.min.js)."); return; }
+  topics = topics || filteredTopics();
+  if (!topics.length) { alert("لا توجد مواضيع ضمن التصفية الحالية."); return; }
+  const single = topics.length === 1 && ui.view === "detail";
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "نظام متابعة المواضيع"; wb.created = new Date();
+
+  /* ---- sheet 1: summary ---- */
+  const s1 = wb.addWorksheet("ملخص المواضيع", { views: [{ rightToLeft: true, state: "frozen", ySplit: 3 }] });
+  const h1 = ["المرجع", "الموضوع", "التصنيف", "الجهة", "المسؤول", "الأولوية", "الحالة", "تاريخ الفتح", "تاريخ الاستحقاق", "تاريخ الإقفال", "المدة (يوم)", "عدد الأحداث", "تاريخ آخر مستجد", "آخر مستجد", "ملخص الإقفال"];
+  const w1 = [9, 34, 14, 16, 16, 10, 12, 13, 13, 13, 10, 10, 13, 50, 40];
+  addTitle(s1, "ملخص المواضيع", h1.length);
+  styleHeader(s1.addRow(h1));
+  w1.forEach((w, i) => s1.getColumn(i + 1).width = w);
+  topics.forEach(t => {
+    const le = lastEvent(t);
+    const r = s1.addRow([t.ref, t.title, t.category, t.party, t.owner, PRIORITY[t.priority],
+      STATUS[t.status].ar + (isOverdue(t) ? " (متأخر)" : ""),
+      dateObj(t.openDate), t.dueDate ? dateObj(t.dueDate) : null, t.closeDate ? dateObj(t.closeDate) : null,
+      ageDays(t), t.events.length, le ? dateObj(le.date) : null, le ? le.text : "", t.closeNote]);
+    r.eachCell({ includeEmpty: true }, c => { c.border = XL.border; c.alignment = { vertical: "top", wrapText: true, horizontal: "right" }; });
+    r.getCell(7).fill = XL.fill(isOverdue(t) ? "FFFEE2E2" : STATUS[t.status].xl);
+  });
+  [8, 9, 10, 13].forEach(i => s1.getColumn(i).numFmt = "yyyy/mm/dd");
+  s1.autoFilter = { from: { row: 3, column: 1 }, to: { row: 3, column: h1.length } };
+
+  /* ---- sheet 2: timeline log ---- */
+  const s2 = wb.addWorksheet("السجل الزمني", { views: [{ rightToLeft: true, state: "frozen", ySplit: 3 }] });
+  const h2 = ["المرجع", "الموضوع", "التاريخ", "نوع الحدث", "ما تم", "بواسطة", "اليوم من الفتح", "الفاصل عن الحدث السابق (يوم)"];
+  addTitle(s2, "السجل الزمني للأحداث", h2.length);
+  styleHeader(s2.addRow(h2));
+  [9, 30, 13, 13, 70, 18, 12, 14].forEach((w, i) => s2.getColumn(i + 1).width = w);
+  topics.forEach((t, ti) => {
+    const evs = sortedEvents(t);
+    const band = ti % 2 ? "FFF6F8FB" : "FFFFFFFF";
+    evs.forEach((e, i) => {
+      const r = s2.addRow([t.ref, t.title, dateObj(e.date), EVT[e.type].ar, e.text, e.by,
+        daysBetween(t.openDate, e.date), i ? daysBetween(evs[i - 1].date, e.date) : null]);
+      r.eachCell({ includeEmpty: true }, c => { c.border = XL.border; c.fill = XL.fill(band); c.alignment = { vertical: "top", wrapText: true, horizontal: "right" }; });
+      r.getCell(4).font = { bold: true, color: { argb: XL.hex(EVT[e.type].color) } };
+    });
+  });
+  s2.getColumn(3).numFmt = "yyyy/mm/dd";
+  s2.autoFilter = { from: { row: 3, column: 1 }, to: { row: 3, column: h2.length } };
+
+  /* ---- sheet 3: gantt-style timeline ---- */
+  buildGanttSheet(wb, topics);
+
+  const buf = await wb.xlsx.writeBuffer();
+  const name = single ? `المخطط-الزمني-${topics[0].ref}-${todayISO()}.xlsx` : `متابعة-المواضيع-${todayISO()}.xlsx`;
+  download(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), name);
+  toast("تم تصدير ملف Excel");
+}
+
+function buildGanttSheet(wb, topics) {
+  const ws = wb.addWorksheet("المخطط الزمني", { views: [{ rightToLeft: true, state: "frozen", xSplit: 4, ySplit: 3 }] });
+  const min = topics.map(t => t.openDate).sort()[0];
+  const max = topics.flatMap(t => [endDate(t), ...t.events.map(e => e.date)]).sort().pop();
+  const span = daysBetween(min, max);
+
+  // pick a column unit that keeps the sheet readable
+  const unit = span <= 75 ? "day" : span <= 500 ? "week" : "month";
+  const DAY = 86400000;
+  const bucketStart = iso => {
+    const t = toUTC(iso), d = new Date(t);
+    if (unit === "day") return t;
+    if (unit === "week") return t - ((d.getUTCDay() + 1) % 7) * DAY;      // weeks start on Saturday
+    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
+  };
+  const next = t => {
+    if (unit === "day") return t + DAY;
+    if (unit === "week") return t + 7 * DAY;
+    const d = new Date(t); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
+  };
+  const buckets = [];
+  for (let t = bucketStart(min); t <= toUTC(max); t = next(t)) buckets.push(t);
+  const idx = new Map(buckets.map((b, i) => [b, i]));
+  const unitAr = { day: "يومي", week: "أسبوعي (يبدأ السبت)", month: "شهري" }[unit];
+  const FIX = 4;
+  const lastCol = FIX + buckets.length;
+
+  ws.mergeCells(1, 1, 1, Math.max(lastCol, 8));
+  ws.getCell(1, 1).value = `المخطط الزمني (Timeline) – عرض ${unitAr}`;
+  ws.getCell(1, 1).font = { bold: true, size: 14, color: { argb: XL.brand } };
+  ws.getCell(1, 1).alignment = { horizontal: "right" };
+  ws.mergeCells(2, 1, 2, Math.max(lastCol, 8));
+  ws.getCell(2, 1).value = "● حدث مسجل (مرر المؤشر على الخلية لعرض التفاصيل)   ✔ إقفال   الشريط الملون = فترة بقاء الموضوع مفتوحاً";
+  ws.getCell(2, 1).font = { size: 10, color: { argb: "FF667085" } };
+
+  const today = bucketStart(todayISO());
+  const head = ["المرجع", "الموضوع", "الحالة", "المدة (يوم)", ...buckets.map(b => {
+    const d = new Date(b);
+    return unit === "month" ? `${d.getUTCFullYear()}/${pad(d.getUTCMonth() + 1)}` : `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}`;
+  })];
+  const hr = ws.addRow(head);
+  styleHeader(hr);
+  buckets.forEach((b, i) => {
+    const c = hr.getCell(FIX + 1 + i);
+    c.alignment = { textRotation: 90, horizontal: "center", vertical: "middle" };
+    c.font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
+    if (b === today) c.fill = XL.fill("FFDC2626");
+  });
+  hr.height = 46;
+  ws.getColumn(1).width = 9; ws.getColumn(2).width = 34; ws.getColumn(3).width = 12; ws.getColumn(4).width = 9;
+  for (let i = 0; i < buckets.length; i++) ws.getColumn(FIX + 1 + i).width = unit === "day" ? 3.6 : 4.2;
+
+  topics.forEach(t => {
+    const r = ws.addRow([t.ref, t.title, STATUS[t.status].ar, ageDays(t)]);
+    r.height = 20;
+    for (let c = 1; c <= lastCol; c++) r.getCell(c).border = XL.border;
+    [1, 2, 3, 4].forEach(c => r.getCell(c).alignment = { vertical: "middle", horizontal: "right" });
+    r.getCell(3).fill = XL.fill(STATUS[t.status].xl);
+
+    const from = idx.get(bucketStart(t.openDate)), to = idx.get(bucketStart(endDate(t)));
+    for (let i = from; i <= to; i++) r.getCell(FIX + 1 + i).fill = XL.fill(STATUS[t.status].xl);
+
+    // group events per bucket, mark them and attach a note with the details
+    const per = new Map();
+    sortedEvents(t).forEach(e => { const k = idx.get(bucketStart(e.date)); (per.get(k) || per.set(k, []).get(k)).push(e); });
+    per.forEach((evs, i) => {
+      const c = r.getCell(FIX + 1 + i);
+      const last = evs[evs.length - 1];
+      const closing = evs.some(e => e.type === "close");
+      c.value = closing ? "✔" : (evs.length > 1 ? String(evs.length) : "●");
+      c.font = { bold: true, color: { argb: closing ? "FF15803D" : XL.hex(EVT[last.type].color) } };
+      c.alignment = { horizontal: "center", vertical: "middle" };
+      c.note = evs.map(e => `${fmt(e.date)} – ${EVT[e.type].ar}${e.by ? " (" + e.by + ")" : ""}\n${e.text}`).join("\n\n");
+    });
+  });
+}
+$("#btnExcel").onclick = () => exportExcel();
+
+/* ================= demo data ================= */
+function loadDemo() {
+  const d = n => isoFromUTC(toUTC(todayISO()) + n * 86400000);
+  const mk = (data, evs, close) => {
+    const t = createTopic(data);
+    evs.forEach(([o, type, text, by]) => addEvent(t, { date: d(o), type, text, by: by || "" }));
+    if (close) { t.status = "closed"; t.closeDate = d(close[0]); t.closeNote = close[1]; addEvent(t, { date: t.closeDate, type: "close", text: close[1] }); }
+    else if (evs.length) t.status = "progress";
+    return t;
+  };
+  mk({ title: "تجديد عقد صيانة المبنى الرئيسي", category: "عقود", party: "إدارة المشتريات", owner: "أحمد", priority: "high", openDate: d(-40), dueDate: d(-5),
+       description: "انتهاء عقد الصيانة الحالي ويلزم الطرح والترسية قبل نهاية الربع." },
+     [[-35, "letter", "إرسال خطاب لإدارة المشتريات بطلب الطرح", "أحمد"], [-28, "meeting", "اجتماع مع المشتريات لمراجعة كراسة الشروط"],
+      [-15, "action", "طرح المنافسة واستقبال 3 عروض"], [-6, "followup", "متابعة التقييم الفني – بانتظار اللجنة"]]);
+  mk({ title: "معالجة ملاحظات المراجعة الداخلية", category: "مراجعة", party: "المراجعة الداخلية", owner: "سارة", priority: "medium", openDate: d(-60), dueDate: d(-10) },
+     [[-55, "update", "استلام تقرير الملاحظات (7 ملاحظات)"], [-42, "action", "معالجة 4 ملاحظات ورفع الشواهد"],
+      [-25, "decision", "اعتماد خطة معالجة الملاحظات المتبقية"]], [-12, "تمت معالجة جميع الملاحظات وإغلاقها من المراجعة الداخلية"]);
+  mk({ title: "طلب ربط النظام مع الجهة الخارجية", category: "تقنية", party: "تقنية المعلومات", owner: "خالد", priority: "high", openDate: d(-20), dueDate: d(15) },
+     [[-18, "letter", "مراسلة الجهة لطلب وثائق الربط"], [-9, "meeting", "اجتماع فني مع فريق الجهة"], [-2, "update", "استلام بيئة الاختبار"]]);
+  mk({ title: "تحديث سياسة العمل عن بعد", category: "موارد بشرية", owner: "نورة", priority: "low", openDate: d(-8) }, []);
+  save(); renderList(); toast("تم تحميل بيانات تجريبية");
+}
+
+/* ================= init ================= */
+(function init() {
+  const m = location.hash.match(/t=([\w-]+)/);
+  if (m && getTopic(m[1])) showDetail(m[1]); else showList();
+})();
+</script>
+</body>
+</html>
