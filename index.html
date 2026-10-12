@@ -256,8 +256,8 @@
           <div class="field"><label>أداة الحدث</label><select name="tool" id="evTool"></select></div>
           <div class="field"><label>ما تم</label><textarea name="text" required placeholder="وصف الإجراء أو التحديث…"></textarea></div>
           <div class="row">
-            <div class="field"><label>المنفذ (اختياري)</label><input name="by" list="partyList" placeholder="من قام بالحدث"></div>
-            <div class="field"><label>المستلم (اختياري)</label><input name="to" list="partyList" placeholder="الموجَّه إليه"></div>
+            <div class="field"><label>المنفذ (اختياري)</label><input name="by" autocomplete="off" placeholder="من قام بالحدث"></div>
+            <div class="field"><label>المستلم (اختياري)</label><input name="to" autocomplete="off" placeholder="الموجَّه إليه"></div>
           </div>
           <div class="dlg-actions">
             <button type="button" class="btn hidden" id="btnEvCancel">إلغاء التعديل</button>
@@ -276,7 +276,7 @@
     <div class="field"><label>عنوان الموضوع *</label><input name="title" required></div>
     <div class="field"><label>الوصف / الخلفية</label><textarea name="description"></textarea></div>
     <div class="row">
-      <div class="field"><label>التصنيف</label><input name="category" list="catList"></div>
+      <div class="field"><label>التصنيف</label><input name="category" autocomplete="off"></div>
       <div class="field"><label>الجهة ذات العلاقة</label><input name="party"></div>
     </div>
     <div class="row">
@@ -304,8 +304,6 @@
     </div>
   </form>
 </dialog>
-<datalist id="catList"></datalist>
-<datalist id="partyList"></datalist>
 
 <!-- close dialog -->
 <dialog id="dlgClose">
@@ -315,8 +313,8 @@
     <div class="field"><label>ملخص الإقفال / النتيجة *</label><textarea name="text" required></textarea></div>
     <div class="field"><label>أداة الإقفال</label><select name="tool" id="closeTool"></select></div>
     <div class="row">
-      <div class="field"><label>المنفذ (اختياري)</label><input name="by" list="partyList"></div>
-      <div class="field"><label>المستلم (اختياري)</label><input name="to" list="partyList"></div>
+      <div class="field"><label>المنفذ (اختياري)</label><input name="by" autocomplete="off"></div>
+      <div class="field"><label>المستلم (اختياري)</label><input name="to" autocomplete="off"></div>
     </div>
     <div class="dlg-actions">
       <button type="button" class="btn" data-close>إلغاء</button>
@@ -457,9 +455,6 @@ const STATUS = {
   hold:     { ar: "معلّق",        color: "#7c3aed", xl: "FFEDE4FE" },
   closed:   { ar: "مقفل",        color: "#15803d", xl: "FFD1FAE0" },
 };
-// suggested categories for regulatory work (free text is still allowed)
-const CATEGORY_PRESETS = ["التراخيص والتصاريح", "التفتيش والرقابة", "الإنفاذ والمخالفات", "الأمان النووي", "الوقاية من الإشعاع",
-  "الأمن النووي", "الضمانات", "التأهب والاستجابة للطوارئ", "النفايات المشعة", "الأنظمة واللوائح", "التعاون الدولي", "الشؤون الإدارية والمالية"];
 const PRIORITY = { high: "عالية", medium: "متوسطة", low: "منخفضة" };
 
 // event types (what kind of step it is); `manual` = selectable in the event form
@@ -644,11 +639,6 @@ function renderCategories() {
   const sel = $("#fCategory"), cur = sel.value;
   sel.innerHTML = `<option value="">كل التصنيفات</option>` + cats.map(c => `<option>${esc(c)}</option>`).join("");
   sel.value = cats.includes(cur) ? cur : "";
-  $("#catList").innerHTML = [...new Set([...cats, ...CATEGORY_PRESETS])].map(c => `<option value="${esc(c)}">`).join("");
-  // executor / recipient suggestions from names already used
-  const names = new Set();
-  db.topics.forEach(t => { [t.owner, t.party].forEach(v => v && names.add(v)); t.events.forEach(e => { if (e.by) names.add(e.by); if (e.to) names.add(e.to); }); });
-  $("#partyList").innerHTML = [...names].sort().map(n => `<option value="${esc(n)}">`).join("");
 }
 
 function statusBadges(t) {
