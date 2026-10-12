@@ -47,6 +47,11 @@
   .brandline { display: flex; align-items: center; gap: 10px; }
   .brandline img { height: 42px; max-width: 90px; object-fit: contain; background: #fff; border-radius: 8px; padding: 3px; }
   #hdrOrg { font-size: 13px; opacity: .85; }
+  .sync-pill { font: inherit; font-size: 12px; border: 1px solid rgba(255,255,255,.4); border-radius: 999px; padding: 0 10px; margin-inline-start: 8px; cursor: pointer; background: rgba(255,255,255,.12); color: #fff; line-height: 20px; }
+  .sync-pill.on { background: #e8f6ee; color: #066d39; border-color: #e8f6ee; }
+  .sync-pill.err { background: #fef3c7; color: #7c2d12; border-color: #fef3c7; }
+  .share-box { background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 14px; line-height: 1.8; margin-bottom: 10px; }
+  .share-help { font-size: 13px; color: var(--muted); padding-inline-start: 18px; margin: 0 0 10px; }
   .ver { font-size: 12px; font-weight: 600; background: var(--gold); color: #1d2433; border-radius: 6px; padding: 0 7px; vertical-align: 3px; }
   .toolbar { display: flex; flex-wrap: wrap; gap: 8px; }
 
@@ -192,12 +197,13 @@
 
 <header class="top">
   <div class="wrap">
-    <div class="brandline"><img id="hdrLogo" class="hidden" alt=""><div><h1>نظام متابعة المواضيع <span class="ver" id="appVer">نسخة تطويرية</span></h1><span id="hdrOrg"></span></div></div>
+    <div class="brandline"><img id="hdrLogo" class="hidden" alt=""><div><h1>نظام متابعة المواضيع <span class="ver" id="appVer">نسخة تطويرية</span></h1><span id="hdrOrg"></span> <button type="button" class="sync-pill local" id="syncPill">💻 على هذا الجهاز فقط</button></div></div>
     <div class="toolbar">
       <button class="btn primary" style="background:#fff;color:var(--brand)" id="btnNew">＋ موضوع جديد</button>
       <button class="btn ghost" id="btnExcel">⬇ تصدير Excel</button>
       <button class="btn ghost" id="btnPdf">📄 تقرير PDF</button>
       <button class="btn ghost" id="btnSettings">⚙ هوية التقرير</button>
+      <button class="btn ghost" id="btnShare">🔗 المشاركة</button>
       <button class="btn ghost" id="btnBackup">💾 نسخة احتياطية</button>
       <button class="btn ghost" id="btnRestore">↺ استعادة</button>
       <input type="file" id="fileRestore" accept="application/json,.json" class="hidden">
@@ -308,6 +314,30 @@
     <div class="dlg-actions">
       <button type="button" class="btn" data-close>إلغاء</button>
       <button class="btn success" value="ok">تأكيد الإقفال</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- sharing dialog -->
+<dialog id="dlgShare">
+  <form id="shareForm" method="dialog" autocomplete="off">
+    <h3>مشاركة البيانات بين الأشخاص والأجهزة</h3>
+    <p class="muted" style="margin-top:-6px">اختر مجلداً مشتركاً (OneDrive أو SharePoint أو Teams أو مجلد على الشبكة) يصل إليه كل المستخدمين.
+      يحفظ كل جهاز ملفه الخاص داخل المجلد، ويقرأ النظام ملفات الجميع ويدمجها تلقائياً.</p>
+    <div class="field"><label>اسمك (يظهر للآخرين بجانب تعديلاتك) *</label><input name="user" placeholder="مثال: أحمد العتيبي"></div>
+    <div class="share-box" id="shareStatus"></div>
+    <p class="hidden" id="shareUnsupported" style="color:var(--danger)">هذا المتصفح لا يدعم الوصول إلى المجلدات. استخدم Google Chrome أو Microsoft Edge على الكمبيوتر.</p>
+    <ol class="share-help">
+      <li>أنشئ مجلداً مشتركاً (مثلاً «بيانات متابعة المواضيع») في OneDrive/SharePoint/Teams أو على الشبكة، وتأكد أنه متزامن على جهازك.</li>
+      <li>اضغط «اختيار المجلد المشترك» واختره، ثم وافق على إذن «تعديل الملفات».</li>
+      <li>يكرر كل زميل نفس الخطوة على جهازه مع نفس المجلد.</li>
+    </ol>
+    <div class="dlg-actions">
+      <button type="button" class="btn danger hidden" id="btnShareOff">قطع الاتصال</button>
+      <button type="button" class="btn hidden" id="btnShareNow">🔄 مزامنة الآن</button>
+      <span style="flex:1"></span>
+      <button type="button" class="btn primary" id="btnShareDir">📁 اختيار المجلد المشترك</button>
+      <button class="btn" value="ok">إغلاق</button>
     </div>
   </form>
 </dialog>
@@ -498,15 +528,17 @@ function load() {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) {
       const d = JSON.parse(raw);
-      if (d && Array.isArray(d.topics)) return { seq: d.seq || d.topics.length, topics: migrateTopics(d.topics), settings: d.settings || {} };
+      if (d && Array.isArray(d.topics)) return { seq: d.seq || d.topics.length, topics: migrateTopics(d.topics), settings: d.settings || {}, tomb: d.tomb || { t: {}, e: {} } };
     }
   } catch (e) { console.warn(e); }
-  return { seq: 0, topics: [], settings: {} };
+  return { seq: 0, topics: [], settings: {}, tomb: { t: {}, e: {} } };
 }
 
 function save() {
+  if (window.Sync) Sync.beforeSave(db);          // stamps who/when changed what (for shared folders)
   try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); }
   catch (e) { alert("تعذر الحفظ في المتصفح: " + e.message); }
+  if (window.Sync) Sync.afterSave();             // writes to the shared folder when connected
 }
 
 /* ================= model ================= */
@@ -664,7 +696,7 @@ function timelineHTML(t, withTools) {
     const tools = withTools ? `<span class="tools">
         <button title="تعديل" onclick="editEvent('${e.id}')">✎</button>
         ${e.type !== "create" ? `<button title="حذف" onclick="deleteEvent('${e.id}')">🗑</button>` : ""}</span>` : "";
-    return `<div class="ev" style="--c:${evColor(e)}">
+    return `<div class="ev" style="--c:${evColor(e)}" ${e.uBy ? `title="سجّله: ${esc(e.uBy)} – ${stampText(e.uAt)}"` : ""}>
       <div class="h"><span class="d">${fmt(e.date)}</span><span class="t">${evTypeAr(e)}</span>
         ${e.tool && TOOLS[e.tool] ? `<span class="tool">${TOOLS[e.tool].emoji} ${TOOLS[e.tool].ar}</span>` : ""}
         ${e.by ? `<span class="by">${esc(e.by)}</span>` : ""}
@@ -673,6 +705,8 @@ function timelineHTML(t, withTools) {
     </div>`;
   }).join("");
 }
+
+const stampText = ms => { if (!ms) return ""; const d = new Date(ms); return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 
 function renderDetail() {
   const t = getTopic(ui.current);
@@ -691,6 +725,7 @@ function renderDetail() {
       <div><span>تاريخ الاستحقاق</span>${fmt(t.dueDate)}</div>
       <div><span>تاريخ الإقفال</span>${fmt(t.closeDate)}</div>
       <div><span>المدة</span>${ageDays(t)} يوم${closed ? "" : " (حتى اليوم)"}</div>
+      ${t.uBy ? `<div><span>آخر تعديل</span>${esc(t.uBy)} · ${stampText(t.uAt)}</div>` : ""}
     </div>
     ${t.description ? `<div class="desc">${esc(t.description)}</div>` : ""}
     <div class="actions">
@@ -877,7 +912,7 @@ $("#fileRestore").onchange = async e => {
     const d = JSON.parse(await file.text());
     if (!d || !Array.isArray(d.topics)) throw new Error("ملف غير صالح");
     if (!confirm(`استعادة ${d.topics.length} موضوع؟ سيتم استبدال البيانات الحالية.`)) return;
-    db = { seq: d.seq || d.topics.length, topics: migrateTopics(d.topics), settings: d.settings || db.settings || {} };
+    db = { seq: d.seq || d.topics.length, topics: migrateTopics(d.topics), settings: d.settings || db.settings || {}, tomb: db.tomb || { t: {}, e: {} } };
     save(); showList(); toast("تمت الاستعادة");
   } catch (err) { alert("تعذرت الاستعادة: " + err.message); }
 };
@@ -1100,9 +1135,10 @@ function loadDemo() {
 <script src="tpl-formal.js"></script>
 <script src="tpl-consult.js"></script>
 <script src="tpl-modern.js"></script>
+<script src="sync.js"></script>
 <script>
   // the multi-file version needs its folder: warn when opened without it (e.g. straight from a ZIP)
-  if (typeof TPL === "undefined" || !TPL.formal || !TPL.consult || !TPL.modern || !window.EMBEDDED_FONT_CSS || !window.ExcelJS || !window.BRAND) {
+  if (typeof TPL === "undefined" || !window.Sync || !TPL.formal || !TPL.consult || !TPL.modern || !window.EMBEDDED_FONT_CSS || !window.ExcelJS || !window.BRAND) {
     const w = document.createElement("div");
     w.className = "load-warn";
     w.textContent = "تعذّر تحميل بعض ملفات النظام. افتح الملف NRRC-Topics-Tracker-V… .html (ملف واحد يعمل مباشرة)، أو فك ضغط المجلد كاملاً ثم افتح index.html.";
