@@ -98,10 +98,10 @@ window.BRAND = {
 .t-formal .foot { height: 34px; flex: none; border-top: 1px solid var(--gold); display: flex; align-items: center; justify-content: space-between; font-size: 9.5px; color: var(--mut); margin-bottom: 16px; }
 .t-formal .foot .cls { font-weight: 700; color: var(--g); }
 
-.f-ttl { text-align: center; margin: 4px 0 6px; }
+.f-ttl { text-align: center; margin: 2px 0 4px; }
 .f-ttl h1 { font-family: Naskh; font-size: 21px; color: var(--g); font-weight: 700; line-height: 1.4; }
 .f-ttl p { font-size: 10.5px; color: var(--mut); }
-.f-h2 { font-family: Naskh; font-size: 14px; color: var(--g); font-weight: 700; margin: 6px 0 5px; display: flex; align-items: center; gap: 8px; line-height: 1.5; }
+.f-h2 { font-family: Naskh; font-size: 14px; color: var(--g); font-weight: 700; margin: 4px 0 4px; display: flex; align-items: center; gap: 8px; line-height: 1.5; }
 .f-h2::before { content: ""; width: 8px; height: 8px; background: var(--gold); transform: rotate(45deg); flex: none; }
 .f-h2 small { font-family: "Plex Arabic"; font-weight: 400; color: var(--mut); font-size: 9.5px; margin-inline-start: auto; }
 .f-para { font-family: Naskh; font-size: 12.5px; line-height: 1.85; text-align: justify; }
@@ -131,7 +131,7 @@ window.BRAND = {
 .f-info div:nth-child(4n+1) { border-inline-start: 0; }
 .f-info div.wide { grid-column: 1 / -1; border-inline-start: 0; white-space: pre-wrap; }
 .f-info span { color: var(--mut); margin-inline-end: 6px; }
-.f-strip { position: relative; height: 92px; margin: 2px 64px 4px; }
+.f-strip { position: relative; height: 86px; margin: 0 64px 2px; }
 .f-strip.tall { height: 150px; }
 .f-strip .ln { position: absolute; top: 44px; right: 0; left: 0; height: 2px; background: var(--g); }
 .f-strip.tall .ln { top: 73px; }
@@ -147,11 +147,11 @@ window.BRAND = {
 .f-strip .lb.red, .f-strip .lb.red b { color: #9b1c1c; }
 .f-strip .lb.u1 { top: 2px; } .f-strip .lb.d1 { top: 60px; }
 .f-strip.tall .lb.u2 { top: 0; } .f-strip.tall .lb.u1 { top: 30px; } .f-strip.tall .lb.d1 { top: 89px; } .f-strip.tall .lb.d2 { top: 119px; }
-.f-note { border: .75px solid var(--gold); background: var(--soft); padding: 6px 12px; font-family: Naskh; font-size: 12px; line-height: 1.85; margin: 6px 0 4px; }
+.f-note { border: .75px solid var(--gold); background: var(--soft); padding: 5px 12px; font-family: Naskh; font-size: 12px; line-height: 1.75; margin: 4px 0 2px; }
 .f-note b, .f-note em { color: var(--g); font-weight: 700; }
 .f-note em { color: #9b1c1c; }
 .f-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
-.f-two > div { border: .75px solid var(--rule); padding: 6px 10px; }
+.f-two > div { border: .75px solid var(--rule); padding: 4px 10px; }
 .f-two h4 { font-family: Naskh; color: var(--g); font-size: 12.5px; margin-bottom: 2px; }
 .f-two ol { padding-inline-start: 18px; font-size: 10.5px; }
 .f-two p { font-size: 10.5px; }
@@ -573,7 +573,7 @@ window.BRAND = {
 
 <header class="top">
   <div class="wrap">
-    <div class="brandline"><img id="hdrLogo" class="hidden" alt=""><div><h1>نظام متابعة المواضيع <span class="ver" id="appVer">V3</span></h1><span id="hdrOrg"></span> <button type="button" class="sync-pill local" id="syncPill">💻 على هذا الجهاز فقط</button></div></div>
+    <div class="brandline"><img id="hdrLogo" class="hidden" alt=""><div><h1>نظام متابعة المواضيع <span class="ver" id="appVer">V4</span></h1><span id="hdrOrg"></span> <button type="button" class="sync-pill local" id="syncPill">💻 على هذا الجهاز فقط</button></div></div>
     <div class="toolbar">
       <button class="btn primary" style="background:#fff;color:var(--brand)" id="btnNew">＋ موضوع جديد</button>
       <button class="btn ghost" id="btnExcel">⬇ تصدير Excel</button>
@@ -631,7 +631,10 @@ window.BRAND = {
           </div>
           <div class="field"><label>أداة الحدث</label><select name="tool" id="evTool"></select></div>
           <div class="field"><label>ما تم</label><textarea name="text" required placeholder="وصف الإجراء أو التحديث…"></textarea></div>
-          <div class="field"><label>بواسطة / الجهة (اختياري)</label><input name="by"></div>
+          <div class="row">
+            <div class="field"><label>المنفذ (اختياري)</label><input name="by" list="partyList" placeholder="من قام بالحدث"></div>
+            <div class="field"><label>المستلم (اختياري)</label><input name="to" list="partyList" placeholder="الموجَّه إليه"></div>
+          </div>
           <div class="dlg-actions">
             <button type="button" class="btn hidden" id="btnEvCancel">إلغاء التعديل</button>
             <button class="btn primary" id="btnEvSave">إضافة للمخطط الزمني</button>
@@ -678,6 +681,7 @@ window.BRAND = {
   </form>
 </dialog>
 <datalist id="catList"></datalist>
+<datalist id="partyList"></datalist>
 
 <!-- close dialog -->
 <dialog id="dlgClose">
@@ -686,7 +690,10 @@ window.BRAND = {
     <div class="field"><label>تاريخ الإقفال *</label><input type="date" name="date" required></div>
     <div class="field"><label>ملخص الإقفال / النتيجة *</label><textarea name="text" required></textarea></div>
     <div class="field"><label>أداة الإقفال</label><select name="tool" id="closeTool"></select></div>
-    <div class="field"><label>بواسطة (اختياري)</label><input name="by"></div>
+    <div class="row">
+      <div class="field"><label>المنفذ (اختياري)</label><input name="by" list="partyList"></div>
+      <div class="field"><label>المستلم (اختياري)</label><input name="to" list="partyList"></div>
+    </div>
     <div class="dlg-actions">
       <button type="button" class="btn" data-close>إلغاء</button>
       <button class="btn success" value="ok">تأكيد الإقفال</button>
@@ -1313,6 +1320,7 @@ function migrateTopics(topics) {
     if (m) { e.type = m[0]; if (!e.tool) e.tool = m[1]; }
     if (!EVT[e.type]) e.type = "update";
     if (e.tool === undefined) e.tool = "";
+    if (e.to === undefined) e.to = "";
   }));
   return topics;
 }
@@ -1380,7 +1388,7 @@ function ageDays(t) { return Math.max(0, daysBetween(t.openDate, endDate(t))); }
 
 function addEvent(t, ev) {
   t.evSeq = (t.evSeq || 0) + 1;
-  t.events.push({ id: uid(), seq: t.evSeq, by: "", tool: "", ...ev });
+  t.events.push({ id: uid(), seq: t.evSeq, by: "", to: "", tool: "", ...ev });
 }
 
 function createTopic(data) {
@@ -1424,7 +1432,7 @@ function filteredTopics() {
     if (STATUS[st] && t.status !== st) return false;
     if (cat && t.category !== cat) return false;
     if (q) {
-      const hay = [t.ref, t.title, t.description, t.owner, t.party, t.category, ...t.events.map(e => e.text + " " + e.by + " " + evLabel(e))].join(" ").toLowerCase();
+      const hay = [t.ref, t.title, t.description, t.owner, t.party, t.category, ...t.events.map(e => e.text + " " + e.by + " " + (e.to || "") + " " + evLabel(e))].join(" ").toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -1462,6 +1470,10 @@ function renderCategories() {
   sel.innerHTML = `<option value="">كل التصنيفات</option>` + cats.map(c => `<option>${esc(c)}</option>`).join("");
   sel.value = cats.includes(cur) ? cur : "";
   $("#catList").innerHTML = [...new Set([...cats, ...CATEGORY_PRESETS])].map(c => `<option value="${esc(c)}">`).join("");
+  // executor / recipient suggestions from names already used
+  const names = new Set();
+  db.topics.forEach(t => { [t.owner, t.party].forEach(v => v && names.add(v)); t.events.forEach(e => { if (e.by) names.add(e.by); if (e.to) names.add(e.to); }); });
+  $("#partyList").innerHTML = [...names].sort().map(n => `<option value="${esc(n)}">`).join("");
 }
 
 function statusBadges(t) {
@@ -1525,7 +1537,7 @@ function timelineHTML(t, withTools) {
     return `<div class="ev" style="--c:${evColor(e)}" ${e.uBy ? `title="سجّله: ${esc(e.uBy)} – ${stampText(e.uAt)}"` : ""}>
       <div class="h"><span class="d">${fmt(e.date)}</span><span class="t">${evTypeAr(e)}</span>
         ${e.tool && TOOLS[e.tool] ? `<span class="tool">${TOOLS[e.tool].emoji} ${TOOLS[e.tool].ar}</span>` : ""}
-        ${e.by ? `<span class="by">${esc(e.by)}</span>` : ""}
+        ${e.by || e.to ? `<span class="by">${e.by ? "المنفذ: " + esc(e.by) : ""}${e.by && e.to ? " ← " : ""}${e.to ? "المستلم: " + esc(e.to) : ""}</span>` : ""}
         ${gap !== null ? `<span class="gap">(+${gap} يوم)</span>` : ""}${tools}</div>
       <div class="x">${esc(e.text)}</div>
     </div>`;
@@ -1584,7 +1596,7 @@ function editEvent(id) {
   const f = $("#eventForm");
   // system event types are kept as-is, only manual types are switchable
   $("#evType").innerHTML = Object.entries(EVT).filter(([k, v]) => v.manual || k === e.type).map(([k, v]) => `<option value="${k}">${v.ar}</option>`).join("");
-  f.date.value = e.date; f.type.value = e.type; f.tool.value = e.tool || ""; f.text.value = e.text; f.by.value = e.by || "";
+  f.date.value = e.date; f.type.value = e.type; f.tool.value = e.tool || ""; f.text.value = e.text; f.by.value = e.by || ""; f.to.value = e.to || "";
   f.type.disabled = !(EVT[e.type] || {}).manual;
   $("#eventFormTitle").textContent = "تعديل حدث";
   $("#btnEvSave").textContent = "حفظ التعديل";
@@ -1606,7 +1618,7 @@ function deleteEvent(id) {
 $("#eventForm").addEventListener("submit", ev => {
   ev.preventDefault();
   const f = ev.target, t = getTopic(ui.current);
-  const data = { date: f.date.value, type: f.type.value, tool: f.tool.value, text: f.text.value.trim(), by: f.by.value.trim() };
+  const data = { date: f.date.value, type: f.type.value, tool: f.tool.value, text: f.text.value.trim(), by: f.by.value.trim(), to: f.to.value.trim() };
   if (!data.text) return;
   if (ui.editingEvent) {
     const e = t.events.find(x => x.id === ui.editingEvent);
@@ -1681,7 +1693,7 @@ $("#closeForm").addEventListener("submit", ev => {
   const f = ev.target, t = getTopic(ui.current);
   if (f.date.value < t.openDate) { ev.preventDefault(); alert("تاريخ الإقفال يسبق تاريخ الفتح."); return; }
   t.status = "closed"; t.closeDate = f.date.value; t.closeNote = f.text.value.trim();
-  addEvent(t, { date: t.closeDate, type: "close", text: t.closeNote, by: f.by.value.trim(), tool: f.tool.value });
+  addEvent(t, { date: t.closeDate, type: "close", text: t.closeNote, by: f.by.value.trim(), to: f.to.value.trim(), tool: f.tool.value });
   save(); resetEventForm(); renderDetail(); toast("تم إقفال الموضوع");
 });
 
@@ -1811,15 +1823,15 @@ async function exportExcel(topics) {
 
   /* ---- sheet 2: timeline log ---- */
   const s2 = wb.addWorksheet("السجل الزمني", { views: [{ rightToLeft: true, state: "frozen", ySplit: 3 }] });
-  const h2 = ["المرجع", "الموضوع", "التاريخ", "نوع الحدث", "أداة الحدث", "ما تم", "بواسطة", "اليوم من الفتح", "الفاصل عن الحدث السابق (يوم)"];
+  const h2 = ["المرجع", "الموضوع", "التاريخ", "نوع الحدث", "أداة الحدث", "ما تم", "المنفذ", "المستلم", "اليوم من الفتح", "الفاصل عن الحدث السابق (يوم)"];
   addTitle(s2, "السجل الزمني للأحداث", h2.length);
   styleHeader(s2.addRow(h2));
-  [9, 30, 13, 11, 15, 66, 18, 12, 14].forEach((w, i) => s2.getColumn(i + 1).width = w);
+  [9, 30, 13, 11, 15, 58, 18, 18, 12, 14].forEach((w, i) => s2.getColumn(i + 1).width = w);
   topics.forEach((t, ti) => {
     const evs = sortedEvents(t);
     const band = ti % 2 ? "FFF6F8FB" : "FFFFFFFF";
     evs.forEach((e, i) => {
-      const r = s2.addRow([t.ref, t.title, dateObj(e.date), evTypeAr(e), e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : "", e.text, e.by,
+      const r = s2.addRow([t.ref, t.title, dateObj(e.date), evTypeAr(e), e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : "", e.text, e.by, e.to || "",
         daysBetween(t.openDate, e.date), i ? daysBetween(evs[i - 1].date, e.date) : null]);
       r.eachCell({ includeEmpty: true }, c => { c.border = XL.border; c.fill = XL.fill(band); c.alignment = { vertical: "top", wrapText: true, horizontal: "right" }; });
       r.getCell(4).font = { bold: true, color: { argb: XL.hex(evColor(e)) } };
@@ -1909,7 +1921,7 @@ function buildGanttSheet(wb, topics) {
       c.value = closing ? "✔" : (evs.length > 1 ? String(evs.length) : "●");
       c.font = { bold: true, color: { argb: closing ? "FF15803D" : XL.hex(evColor(last)) } };
       c.alignment = { horizontal: "center", vertical: "middle" };
-      c.note = evs.map(e => `${fmt(e.date)} – ${evLabel(e)}${e.by ? " (" + e.by + ")" : ""}\n${e.text}`).join("\n\n");
+      c.note = evs.map(e => `${fmt(e.date)} – ${evLabel(e)}${e.by ? " – المنفذ: " + e.by : ""}${e.to ? " – المستلم: " + e.to : ""}\n${e.text}`).join("\n\n");
     });
   });
 }
@@ -1920,7 +1932,7 @@ function loadDemo() {
   const d = n => isoFromUTC(toUTC(todayISO()) + n * 86400000);
   const mk = (data, evs, close) => {
     const t = createTopic(data);
-    evs.forEach(([o, type, text, by, tool]) => addEvent(t, { date: d(o), type, text, by: by || "", tool: tool || "" }));
+    evs.forEach(([o, type, text, by, tool, to]) => addEvent(t, { date: d(o), type, text, by: by || "", tool: tool || "", to: to || "" }));
     if (close) { t.status = "closed"; t.closeDate = d(close[0]); t.closeNote = close[1]; addEvent(t, { date: t.closeDate, type: "close", text: close[1] }); }
     else if (evs.length) t.status = "progress";
     return t;
@@ -1930,12 +1942,12 @@ function loadDemo() {
        nextSteps: "استلام تقرير قياس مستويات الإشعاع بعد تعديل الدروع\nمراجعة التقرير من إدارة الوقاية من الإشعاع\nعرض التوصية على لجنة التراخيص",
        risks: "تأخر تشغيل الخدمة العلاجية لدى الجهة\nانتهاء صلاحية التصريح المؤقت قبل صدور الترخيص",
        decision: "اعتماد تمديد التصريح المؤقت لمدة 30 يوماً لحين استكمال المتطلبات" },
-     [[-35, "letter", "إرسال خطاب للجهة بطلب استيفاء متطلبات الدروع وخطة الوقاية الإشعاعية", "أحمد العتيبي"],
+     [[-35, "letter", "إرسال خطاب للجهة بطلب استيفاء متطلبات الدروع وخطة الوقاية الإشعاعية", "أحمد العتيبي", "", "جهة طبية طالبة للترخيص"],
       [-26, "inspection", "زيارة ميدانية للتحقق من غرفة العلاج وأنظمة الدروع؛ رُصدت 3 ملاحظات", "فريق التفتيش"],
-      [-15, "meeting", "اجتماع مع الجهة لمناقشة خطة معالجة الملاحظات وجدولها الزمني", "إدارة التراخيص"],
-      [-6, "followup", "متابعة تنفيذ تعديلات الدروع – بانتظار تقرير القياس من الجهة", "أحمد العتيبي", "phone"]]);
+      [-15, "meeting", "اجتماع مع الجهة لمناقشة خطة معالجة الملاحظات وجدولها الزمني", "إدارة التراخيص", "", "جهة طبية طالبة للترخيص"],
+      [-6, "followup", "متابعة تنفيذ تعديلات الدروع – بانتظار تقرير القياس من الجهة", "أحمد العتيبي", "phone", "مسؤول الوقاية الإشعاعية بالجهة"]]);
   mk({ title: "معالجة ملاحظات التفتيش الدوري على منشأة صناعية", category: "التفتيش والرقابة", party: "منشأة صناعية مرخَّص لها", owner: "سارة القحطاني", priority: "medium", openDate: d(-60), dueDate: d(-10) },
-     [[-57, "inspection", "تفتيش دوري ورصد 5 ملاحظات على حفظ المصادر وسجلات الجرعات"], [-50, "letter", "إبلاغ المنشأة بالملاحظات ومهلة المعالجة"],
+     [[-57, "inspection", "تفتيش دوري ورصد 5 ملاحظات على حفظ المصادر وسجلات الجرعات"], [-50, "letter", "إبلاغ المنشأة بالملاحظات ومهلة المعالجة", "سارة القحطاني", "", "منشأة صناعية مرخَّص لها"],
       [-33, "update", "استلام شواهد معالجة 4 ملاحظات", "", "email"], [-20, "inspection", "زيارة تحقق ميدانية من المعالجة"]], [-12, "التحقق من معالجة جميع الملاحظات وإغلاقها"]);
   mk({ title: "تحديث لائحة الوقاية من الإشعاع", category: "الأنظمة واللوائح", party: "الإدارة القانونية", owner: "خالد الشهري", priority: "high", openDate: d(-50), dueDate: d(6),
        nextSteps: "دراسة مرئيات الجهات ذات العلاقة\nإعداد المسودة النهائية ورفعها للاعتماد" },
@@ -2009,6 +2021,7 @@ const lateDays = t => {
 };
 const sinceLast = t => daysBetween((lastEvent(t) || { date: t.openDate }).date, todayISO());
 const realEvents = t => sortedEvents(t).filter(e => e.type !== "create");
+const parties = e => [e.by ? `المنفذ: ${esc(e.by)}` : "", e.to ? `المستلم: ${esc(e.to)}` : ""].filter(Boolean).join(" · ");
 const evIcon = e => e.tool && ICONS[e.tool] ? e.tool : e.type;   // tool icon when a tool is set
 
 function stats(topics) {
@@ -2652,8 +2665,8 @@ $("#btnReportSettings").onclick = openSettingsDialog;
   function topic(ctx, t) {
     let n = 0;
     const out = [], evs = sortedEvents(t);
-    out.push(onNewPage(h(`<div class="f-ttl"><h1>بيان متابعة موضوع: ${esc(t.title)}</h1><p>المرجع ${esc(t.ref)}${t.category ? " · " + esc(t.category) : ""}</p></div>`), { kind: "topic", t }));
-    out.push(sec(n++, "بيانات الموضوع"));
+    out.push(onNewPage(h(`<div class="f-ttl"><h1>${esc(t.title)}</h1><p>المرجع ${esc(t.ref)}${t.category ? " · " + esc(t.category) : ""}</p></div>`), { kind: "topic", t }));
+    out.push(sec(n++, "البيانات"));
     const late = lateDays(t);
     out.push(h(`<div class="f-info">
       <div><span>الجهة ذات العلاقة:</span>${esc(t.party) || "—"}</div><div><span>المسؤول:</span>${esc(t.owner) || "—"}</div><div><span>الأولوية:</span>${PRIORITY[t.priority]}</div><div><span>الحالة:</span>${STATUS[t.status].ar}</div>
@@ -2664,8 +2677,8 @@ $("#btnReportSettings").onclick = openSettingsDialog;
     out.push(sec(n++, "المسار الزمني"));
     out.push(strip(t));
     out.push(sec(n++, "سجل الإجراءات"));
-    out.push(h(`<table class="f-tbl log" data-split data-cont="سجل الإجراءات – ${esc(t.ref)}"><thead class="split-head"><tr><th style="width:30px">م</th><th style="width:82px">التاريخ</th><th style="width:64px">النوع</th><th style="width:96px">الأداة</th><th>التفاصيل</th><th style="width:130px">الجهة / المنفذ</th><th style="width:70px">الفاصل</th></tr></thead>
-      <tbody class="split-body">${evs.map((e, i) => `<tr><td class="num">${i + 1}</td><td class="num">${fmt(e.date)}</td><td>${evTypeAr(e)}</td><td>${e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : "—"}</td><td class="pre">${esc(e.text)}</td><td>${esc(e.by) || "—"}</td>
+    out.push(h(`<table class="f-tbl log" data-split data-cont="سجل الإجراءات – ${esc(t.ref)}"><thead class="split-head"><tr><th style="width:30px">م</th><th style="width:82px">التاريخ</th><th style="width:64px">النوع</th><th style="width:96px">الأداة</th><th>التفاصيل</th><th style="width:118px">المنفذ</th><th style="width:118px">المستلم</th><th style="width:64px">الفاصل</th></tr></thead>
+      <tbody class="split-body">${evs.map((e, i) => `<tr><td class="num">${i + 1}</td><td class="num">${fmt(e.date)}</td><td>${evTypeAr(e)}</td><td>${e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : "—"}</td><td class="pre">${esc(e.text)}</td><td>${esc(e.by) || "—"}</td><td>${esc(e.to) || "—"}</td>
         <td class="num">${i ? dur(daysBetween(evs[i - 1].date, e.date)) : "—"}</td></tr>`).join("")}</tbody></table>`));
     out.push(h(`<div class="f-note"><b>${t.status === "closed" ? "نتيجة الإقفال" : "الوضع الحالي"}: </b>${topicHeadline(t)}.</div>`));
     const nx = lines(t.nextSteps), rk = lines(t.risks);
@@ -2776,7 +2789,7 @@ $("#btnReportSettings").onclick = openSettingsDialog;
         const i = from + j, now = e.type === "now", nx = all[i + 1];
         return `<div class="st ${now ? "now" : ""}"><div class="d">${fmtShort(e.date)}<small>${e.date.slice(0, 4)}</small></div>
           <span class="dot"></span>${nx && j < chunk.length - 1 ? `<span class="gap">${dur(daysBetween(e.date, nx.date))}</span>` : ""}
-          <div class="k">${now ? "الوضع الحالي" : evLabel(e)}</div><p>${esc(clip(e.text, now ? 140 : 190))}</p>${e.by ? `<div class="by">${esc(e.by)}</div>` : ""}</div>`;
+          <div class="k">${now ? "الوضع الحالي" : evLabel(e)}</div><p>${esc(clip(e.text, now ? 140 : 190))}</p>${parties(e) ? `<div class="by">${parties(e)}</div>` : ""}</div>`;
       }).join("")}</div>`);
   }
 
@@ -2943,7 +2956,7 @@ $("#btnReportSettings").onclick = openSettingsDialog;
           return `<div class="st" style="--c:${c}"><div class="n ${now ? "now" : ""}">${icon(now ? "clock" : evIcon(e), 18, now ? RED : "#fff")}</div>
             ${nx && j < chunk.length - 1 ? `<span class="gp">${dur(daysBetween(e.date, nx.date))}</span>` : ""}
             <div class="c"><div class="d">${fmtShort(e.date)} <small>${e.date.slice(0, 4)}</small></div><div class="ty">${now ? "الوضع الحالي" : evLabel(e)}</div>
-            <p>${esc(clip(e.text, now ? 120 : 170))}</p>${e.by ? `<div class="by">${esc(e.by)}</div>` : ""}</div></div>`;
+            <p>${esc(clip(e.text, now ? 120 : 170))}</p>${parties(e) ? `<div class="by">${parties(e)}</div>` : ""}</div></div>`;
         }).join("")}</div></div>`);
   }
 

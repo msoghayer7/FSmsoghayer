@@ -118,7 +118,7 @@
           return `<div class="st" style="--c:${c}"><div class="n ${now ? "now" : ""}">${icon(now ? "clock" : evIcon(e), 18, now ? RED : "#fff")}</div>
             ${nx && j < chunk.length - 1 ? `<span class="gp">${dur(daysBetween(e.date, nx.date))}</span>` : ""}
             <div class="c"><div class="d">${fmtShort(e.date)} <small>${e.date.slice(0, 4)}</small></div><div class="ty">${now ? "الوضع الحالي" : evLabel(e)}</div>
-            <p>${esc(clip(e.text, now ? 120 : 170))}</p>${e.by ? `<div class="by">${esc(e.by)}</div>` : ""}</div></div>`;
+            <p>${esc(clip(e.text, now ? 120 : 170))}</p>${parties(e) ? `<div class="by">${parties(e)}</div>` : ""}</div></div>`;
         }).join("")}</div></div>`);
   }
 

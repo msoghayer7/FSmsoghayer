@@ -132,8 +132,8 @@
   function topic(ctx, t) {
     let n = 0;
     const out = [], evs = sortedEvents(t);
-    out.push(onNewPage(h(`<div class="f-ttl"><h1>بيان متابعة موضوع: ${esc(t.title)}</h1><p>المرجع ${esc(t.ref)}${t.category ? " · " + esc(t.category) : ""}</p></div>`), { kind: "topic", t }));
-    out.push(sec(n++, "بيانات الموضوع"));
+    out.push(onNewPage(h(`<div class="f-ttl"><h1>${esc(t.title)}</h1><p>المرجع ${esc(t.ref)}${t.category ? " · " + esc(t.category) : ""}</p></div>`), { kind: "topic", t }));
+    out.push(sec(n++, "البيانات"));
     const late = lateDays(t);
     out.push(h(`<div class="f-info">
       <div><span>الجهة ذات العلاقة:</span>${esc(t.party) || "—"}</div><div><span>المسؤول:</span>${esc(t.owner) || "—"}</div><div><span>الأولوية:</span>${PRIORITY[t.priority]}</div><div><span>الحالة:</span>${STATUS[t.status].ar}</div>
@@ -144,8 +144,8 @@
     out.push(sec(n++, "المسار الزمني"));
     out.push(strip(t));
     out.push(sec(n++, "سجل الإجراءات"));
-    out.push(h(`<table class="f-tbl log" data-split data-cont="سجل الإجراءات – ${esc(t.ref)}"><thead class="split-head"><tr><th style="width:30px">م</th><th style="width:82px">التاريخ</th><th style="width:64px">النوع</th><th style="width:96px">الأداة</th><th>التفاصيل</th><th style="width:130px">الجهة / المنفذ</th><th style="width:70px">الفاصل</th></tr></thead>
-      <tbody class="split-body">${evs.map((e, i) => `<tr><td class="num">${i + 1}</td><td class="num">${fmt(e.date)}</td><td>${evTypeAr(e)}</td><td>${e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : "—"}</td><td class="pre">${esc(e.text)}</td><td>${esc(e.by) || "—"}</td>
+    out.push(h(`<table class="f-tbl log" data-split data-cont="سجل الإجراءات – ${esc(t.ref)}"><thead class="split-head"><tr><th style="width:30px">م</th><th style="width:82px">التاريخ</th><th style="width:64px">النوع</th><th style="width:96px">الأداة</th><th>التفاصيل</th><th style="width:118px">المنفذ</th><th style="width:118px">المستلم</th><th style="width:64px">الفاصل</th></tr></thead>
+      <tbody class="split-body">${evs.map((e, i) => `<tr><td class="num">${i + 1}</td><td class="num">${fmt(e.date)}</td><td>${evTypeAr(e)}</td><td>${e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : "—"}</td><td class="pre">${esc(e.text)}</td><td>${esc(e.by) || "—"}</td><td>${esc(e.to) || "—"}</td>
         <td class="num">${i ? dur(daysBetween(evs[i - 1].date, e.date)) : "—"}</td></tr>`).join("")}</tbody></table>`));
     out.push(h(`<div class="f-note"><b>${t.status === "closed" ? "نتيجة الإقفال" : "الوضع الحالي"}: </b>${topicHeadline(t)}.</div>`));
     const nx = lines(t.nextSteps), rk = lines(t.risks);

@@ -49,6 +49,7 @@ const lateDays = t => {
 };
 const sinceLast = t => daysBetween((lastEvent(t) || { date: t.openDate }).date, todayISO());
 const realEvents = t => sortedEvents(t).filter(e => e.type !== "create");
+const parties = e => [e.by ? `المنفذ: ${esc(e.by)}` : "", e.to ? `المستلم: ${esc(e.to)}` : ""].filter(Boolean).join(" · ");
 const evIcon = e => e.tool && ICONS[e.tool] ? e.tool : e.type;   // tool icon when a tool is set
 
 function stats(topics) {

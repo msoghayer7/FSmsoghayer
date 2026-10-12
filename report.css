@@ -68,10 +68,10 @@
 .t-formal .foot { height: 34px; flex: none; border-top: 1px solid var(--gold); display: flex; align-items: center; justify-content: space-between; font-size: 9.5px; color: var(--mut); margin-bottom: 16px; }
 .t-formal .foot .cls { font-weight: 700; color: var(--g); }
 
-.f-ttl { text-align: center; margin: 4px 0 6px; }
+.f-ttl { text-align: center; margin: 2px 0 4px; }
 .f-ttl h1 { font-family: Naskh; font-size: 21px; color: var(--g); font-weight: 700; line-height: 1.4; }
 .f-ttl p { font-size: 10.5px; color: var(--mut); }
-.f-h2 { font-family: Naskh; font-size: 14px; color: var(--g); font-weight: 700; margin: 6px 0 5px; display: flex; align-items: center; gap: 8px; line-height: 1.5; }
+.f-h2 { font-family: Naskh; font-size: 14px; color: var(--g); font-weight: 700; margin: 4px 0 4px; display: flex; align-items: center; gap: 8px; line-height: 1.5; }
 .f-h2::before { content: ""; width: 8px; height: 8px; background: var(--gold); transform: rotate(45deg); flex: none; }
 .f-h2 small { font-family: "Plex Arabic"; font-weight: 400; color: var(--mut); font-size: 9.5px; margin-inline-start: auto; }
 .f-para { font-family: Naskh; font-size: 12.5px; line-height: 1.85; text-align: justify; }
@@ -101,7 +101,7 @@
 .f-info div:nth-child(4n+1) { border-inline-start: 0; }
 .f-info div.wide { grid-column: 1 / -1; border-inline-start: 0; white-space: pre-wrap; }
 .f-info span { color: var(--mut); margin-inline-end: 6px; }
-.f-strip { position: relative; height: 92px; margin: 2px 64px 4px; }
+.f-strip { position: relative; height: 86px; margin: 0 64px 2px; }
 .f-strip.tall { height: 150px; }
 .f-strip .ln { position: absolute; top: 44px; right: 0; left: 0; height: 2px; background: var(--g); }
 .f-strip.tall .ln { top: 73px; }
@@ -117,11 +117,11 @@
 .f-strip .lb.red, .f-strip .lb.red b { color: #9b1c1c; }
 .f-strip .lb.u1 { top: 2px; } .f-strip .lb.d1 { top: 60px; }
 .f-strip.tall .lb.u2 { top: 0; } .f-strip.tall .lb.u1 { top: 30px; } .f-strip.tall .lb.d1 { top: 89px; } .f-strip.tall .lb.d2 { top: 119px; }
-.f-note { border: .75px solid var(--gold); background: var(--soft); padding: 6px 12px; font-family: Naskh; font-size: 12px; line-height: 1.85; margin: 6px 0 4px; }
+.f-note { border: .75px solid var(--gold); background: var(--soft); padding: 5px 12px; font-family: Naskh; font-size: 12px; line-height: 1.75; margin: 4px 0 2px; }
 .f-note b, .f-note em { color: var(--g); font-weight: 700; }
 .f-note em { color: #9b1c1c; }
 .f-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
-.f-two > div { border: .75px solid var(--rule); padding: 6px 10px; }
+.f-two > div { border: .75px solid var(--rule); padding: 4px 10px; }
 .f-two h4 { font-family: Naskh; color: var(--g); font-size: 12.5px; margin-bottom: 2px; }
 .f-two ol { padding-inline-start: 18px; font-size: 10.5px; }
 .f-two p { font-size: 10.5px; }
