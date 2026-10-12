@@ -147,8 +147,8 @@
     out.push(sec(n++, "المسار الزمني"));
     out.push(strip(t));
     out.push(sec(n++, "سجل الإجراءات"));
-    out.push(h(`<table class="f-tbl log" data-split data-cont="سجل الإجراءات – ${esc(t.ref)}"><thead class="split-head"><tr><th style="width:30px">م</th><th style="width:82px">التاريخ</th><th style="width:64px">النوع</th><th style="width:96px">الأداة</th><th>التفاصيل</th><th style="width:118px">المنفذ</th><th style="width:118px">المستلم</th><th style="width:64px">الفاصل</th></tr></thead>
-      <tbody class="split-body">${evs.map((e, i) => `<tr><td class="num">${i + 1}</td><td class="num">${fmt(e.date)}</td><td>${evTypeAr(e)}</td><td>${e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : "—"}</td><td class="pre">${esc(e.text)}</td><td>${esc(e.by) || "—"}</td><td>${esc(e.to) || "—"}</td>
+    out.push(h(`<table class="f-tbl log" data-split data-cont="سجل الإجراءات – ${esc(t.ref)}"><thead class="split-head"><tr><th style="width:26px">م</th><th style="width:76px">التاريخ</th><th style="width:56px">النوع</th><th style="width:78px">الأداة</th><th style="width:88px">رقم الخطاب / المحضر / القرار</th><th>التفاصيل</th><th style="width:100px">المنفذ</th><th style="width:100px">المستلم</th><th style="width:56px">الفاصل</th></tr></thead>
+      <tbody class="split-body">${evs.map((e, i) => `<tr><td class="num">${i + 1}</td><td class="num">${fmt(e.date)}</td><td>${evTypeAr(e)}</td><td>${e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : "—"}</td><td class="num"><bdi>${esc(e.docRef) || "—"}</bdi></td><td class="pre">${esc(e.text)}</td><td>${esc(e.by) || "—"}</td><td>${esc(e.to) || "—"}</td>
         <td class="num">${i ? dur(daysBetween(evs[i - 1].date, e.date)) : "—"}</td></tr>`).join("")}</tbody></table>`));
     out.push(h(`<div class="f-note"><b>${t.status === "closed" ? "نتيجة الإقفال" : "الوضع الحالي"}: </b>${topicHeadline(t)}.</div>`));
     const nx = lines(t.nextSteps), rk = lines(t.risks);

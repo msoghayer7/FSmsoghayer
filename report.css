@@ -87,6 +87,9 @@
 .f-tbl .num { font-variant-numeric: tabular-nums; text-align: center; white-space: nowrap; }
 .f-tbl.log td { vertical-align: top; }
 .f-tbl.log td:nth-child(3), .f-tbl.log td:nth-child(4) { white-space: nowrap; }
+.f-tbl.log th { line-height: 1.3; }
+.f-tbl.log td, .f-tbl.log th { font-size: 10px; padding: 3px 5px; }
+.f-tbl.log td:nth-child(5) { white-space: normal; word-break: break-word; }
 .t-formal .st { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .t-formal .st i { width: 8px; height: 8px; display: inline-block; }
 .f-stats { display: grid; grid-template-columns: repeat(6, 1fr); border: .75px solid var(--rule); margin: 4px 0 4px; }
@@ -305,7 +308,8 @@
 .t-modern .st .c .d small { font-family: "Plex Arabic"; font-weight: 400; color: var(--mut); font-size: 9px; }
 .t-modern .st .c .ty { font-size: 9.5px; font-weight: 700; color: var(--c); }
 .t-modern .st .c p { font-size: 10px; color: var(--ink2); margin-top: 3px; line-height: 1.5; }
-.t-modern .st .c .by { font-size: 9px; color: var(--mut); margin-top: 3px; }
+.t-modern .st .c .by { font-size: 9px; color: var(--mut); margin-top: 3px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.t-modern .st .c p { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 .t-modern .ps { position: relative; height: 66px; margin: 4px 20px 0 30px; }
 .t-modern .ps .base { position: absolute; top: 28px; right: 0; left: 0; height: 10px; border-radius: 5px; background: var(--bg); }
 .t-modern .ps .fill { position: absolute; top: 28px; height: 10px; border-radius: 5px; background: linear-gradient(to left, color-mix(in srgb, var(--lp) 35%, #fff), var(--lp)); }
