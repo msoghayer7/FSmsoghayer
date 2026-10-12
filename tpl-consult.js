@@ -77,7 +77,7 @@
       <span class="axis" style="right:${100 / PER / 2}%;left:${(PER - chunk.length) / PER * 100 + 100 / PER / 2}%"></span>
       ${chunk.map((e, j) => {
         const i = from + j, now = e.type === "now", nx = all[i + 1];
-        return `<div class="st ${now ? "now" : ""}"><div class="d">${fmtShort(e.date)}<small>${e.date.slice(0, 4)}</small></div>
+        return `<div class="st ${now ? "now" : ""}"><div class="d">${fmtShort(e.date)}<small>${yearOf(e.date)}</small></div>
           <span class="dot"></span>${nx && j < chunk.length - 1 ? `<span class="gap">${dur(daysBetween(e.date, nx.date))}</span>` : ""}
           <div class="k">${now ? "الوضع الحالي" : evLabel(e)}</div><p>${esc(clip(e.text, now ? 140 : 190))}</p>${parties(e) ? `<div class="by">${parties(e)}</div>` : ""}</div>`;
       }).join("")}</div>`);
@@ -92,13 +92,13 @@
     const fillW = span ? Math.min(100, 100 / Math.max(1, used / 100)) : 100;
     const meter = span ? `<div class="meter"><div class="m"><span>الوقت المستهلك من المهلة</span><b class="${used > 100 ? "red" : ""}">${used}%</b></div>
       <div class="t"><span class="f" style="width:${used > 100 ? fillW : used}%"></span>${used > 100 ? `<span class="o" style="right:${fillW}%;left:0"></span>` : ""}</div>
-      <div class="lb"><span>${fmt(t.openDate)}</span><span>الاستحقاق ${fmt(t.dueDate)}</span></div></div>` : "";
+      <div class="lb"><span>${fmtH(t.openDate)}</span><span>الاستحقاق ${fmtH(t.dueDate)}</span></div></div>` : "";
     out.push(h(`<div class="c-tp">
       <div class="c-fact">${h3("بطاقة الموضوع")}<dl>
         <dt>المرجع</dt><dd>${esc(t.ref)}</dd><dt>التصنيف</dt><dd>${esc(t.category) || "—"}</dd><dt>الجهة</dt><dd>${esc(t.party) || "—"}</dd>
         <dt>المسؤول</dt><dd>${esc(t.owner) || "—"}</dd><dt>الأولوية</dt><dd>${PRIORITY[t.priority]}</dd><dt>الحالة</dt><dd>${STATUS[t.status].ar}</dd>
-        <dt>تاريخ الفتح</dt><dd>${fmt(t.openDate)}</dd><dt>الاستحقاق</dt><dd class="${isOverdue(t) ? "red" : ""}">${fmt(t.dueDate)}</dd>
-        ${t.status === "closed" ? `<dt>الإقفال</dt><dd>${fmt(t.closeDate)}</dd>` : `<dt>آخر إجراء</dt><dd>قبل ${dur(sinceLast(t))}</dd>`}
+        <dt>تاريخ الفتح</dt><dd>${fmtH(t.openDate)}</dd><dt>الاستحقاق</dt><dd class="${isOverdue(t) ? "red" : ""}">${fmtH(t.dueDate)}</dd>
+        ${t.status === "closed" ? `<dt>الإقفال</dt><dd>${fmtH(t.closeDate)}</dd>` : `<dt>آخر إجراء</dt><dd>قبل ${dur(sinceLast(t))}</dd>`}
         <dt>عدد الإجراءات</dt><dd>${realEvents(t).length}</dd></dl>${meter}</div>
       <div class="c-right">${h3("المسار الزمني للإجراءات", "الأيام بين كل إجراءين على المحور")}
         ${t.description ? `<p class="c-desc">${esc(clip(t.description, 300))}</p>` : ""}

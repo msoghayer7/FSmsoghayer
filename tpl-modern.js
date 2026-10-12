@@ -117,7 +117,7 @@
           const now = e.type === "now", c = EC[e.type] || SC.open, nx = evs[from + j + 1];
           return `<div class="st" style="--c:${c}"><div class="n ${now ? "now" : ""}">${icon(now ? "clock" : evIcon(e), 18, now ? RED : "#fff")}</div>
             ${nx && j < chunk.length - 1 ? `<span class="gp">${dur(daysBetween(e.date, nx.date))}</span>` : ""}
-            <div class="c"><div class="d">${fmtShort(e.date)} <small>${e.date.slice(0, 4)}</small></div><div class="ty">${now ? "الوضع الحالي" : evLabel(e)}</div>
+            <div class="c"><div class="d">${fmtShort(e.date)} <small>${yearOf(e.date)}</small></div><div class="ty">${now ? "الوضع الحالي" : evLabel(e)}</div>
             <p>${esc(clip(e.text, now ? 120 : 170))}</p>${parties(e) ? `<div class="by">${parties(e)}</div>` : ""}</div></div>`;
         }).join("")}</div></div>`);
   }
@@ -164,10 +164,10 @@
     out.push(h(`<div class="m-row2 ${ex.length > 1 ? "x" + (ex.length + 1) : ""}">
       <div class="card"><h3>بيانات الموضوع</h3><div class="facts ${narrow ? "narrow" : ""}">
         <div><span>الجهة ذات العلاقة</span><b>${esc(t.party) || "—"}</b></div><div><span>المسؤول</span><b>${esc(t.owner) || "—"}</b></div>
-        <div><span>تاريخ الفتح</span><b>${fmt(t.openDate)}</b></div><div><span>تاريخ الاستحقاق</span><b class="${isOverdue(t) ? "red" : ""}">${fmt(t.dueDate)}</b></div>
+        <div><span>تاريخ الفتح</span><b>${fmtH(t.openDate)}</b></div><div><span>تاريخ الاستحقاق</span><b class="${isOverdue(t) ? "red" : ""}">${fmtH(t.dueDate)}</b></div>
         <div><span>عدد الإجراءات</span><b>${realEvents(t).length}</b></div><div><span>متوسط الفاصل</span><b>${gaps.length ? dur(Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length)) : "—"}</b></div>
         ${narrow ? "" : `<div><span>أطول فاصل</span><b>${gaps.length ? dur(Math.max(...gaps)) : "—"}</b></div>`}
-        <div><span>${t.status === "closed" ? "تاريخ الإقفال" : "آخر إجراء"}</span><b>${t.status === "closed" ? fmt(t.closeDate) : "قبل " + dur(sinceLast(t))}</b></div>
+        <div><span>${t.status === "closed" ? "تاريخ الإقفال" : "آخر إجراء"}</span><b>${t.status === "closed" ? fmtH(t.closeDate) : "قبل " + dur(sinceLast(t))}</b></div>
       </div></div>${ex.join("")}</div>`));
     return out;
   }

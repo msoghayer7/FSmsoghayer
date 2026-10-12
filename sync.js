@@ -35,27 +35,37 @@
   const myFileName = () => `data-${safe(getUser())}-${device()}.json`;
 
   /* ---------- change stamping (called from save()) ---------- */
-  const TOPIC_SKIP = new Set(["events", "uAt", "uBy", "fAt", "cAt"]);
+  const TOPIC_SKIP = new Set(["events", "uAt", "uBy", "fAt", "cAt", "cBy", "log", "evSeq"]);
   const topicFields = t => Object.keys(t).filter(k => !TOPIC_SKIP.has(k));
   const evKey = e => { const { uAt, uBy, ...r } = e; return JSON.stringify(r); };
   const setKey = s => { const { uAt, uBy, ...r } = s || {}; return JSON.stringify(r); };
 
   function snapshot(d) {
-    const s = { t: new Map(), e: new Map(), set: setKey(d.settings) };
+    const s = { t: new Map(), e: new Map(), eT: new Map(), info: new Map(), set: setKey(d.settings) };
     (d.topics || []).forEach(t => {
       const f = {};
       topicFields(t).forEach(k => f[k] = JSON.stringify(t[k]));
       s.t.set(t.id, f);
-      (t.events || []).forEach(e => s.e.set(e.id, evKey(e)));
+      s.info.set(t.id, { ref: t.ref, title: t.title });
+      (t.events || []).forEach(e => { s.e.set(e.id, evKey(e)); s.eT.set(e.id, t.id); });
     });
     return s;
   }
+
+  /* ---------- audit log: who changed what, when (shown in the app only) ---------- */
+  const LOG_TOPIC = ["title", "description", "category", "party", "owner", "priority", "status", "openDate", "dueDate", "closeDate", "closeNote", "nextSteps", "risks", "decision"];
+  const LOG_EVENT = ["date", "type", "tool", "docRef", "text", "by", "to"];
+  const uidL = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const cut = v => { v = v == null ? "" : String(v); return v.length > 400 ? v.slice(0, 400) + "…" : v; };
+  const evSummary = e => ({ d: e.date, ty: e.type, x: cut(e.text) });
+  function addLog(t, entry) { (t.log = t.log || []).push({ id: uidL(), ...entry }); }
 
   function beforeSave(d) {
     const s = state.snap || snapshot({ topics: [], settings: {} });
     const ts = Date.now(), u = getUser();
     d.tomb = d.tomb || { t: {}, e: {} };
     const seenT = new Set(), seenE = new Set();
+    const byId = new Map(d.topics.map(t => [t.id, t]));
     d.topics.forEach(t => {
       seenT.add(t.id);
       const old = s.t.get(t.id);
@@ -64,17 +74,43 @@
       t.fAt = t.fAt || {};
       let changed = false;
       topicFields(t).forEach(k => {
-        if (!old || old[k] !== JSON.stringify(t[k])) { t.fAt[k] = ts; changed = true; }
+        if (!old || old[k] !== JSON.stringify(t[k])) {
+          t.fAt[k] = ts; changed = true;
+          if (old && LOG_TOPIC.includes(k)) {
+            const from = old[k] === undefined ? "" : JSON.parse(old[k]);
+            if ((from ?? "") !== (t[k] ?? "")) addLog(t, { at: ts, by: u, a: "edit", f: k, from: cut(from), to: cut(t[k]) });
+          }
+        }
       });
+      if (!old) addLog(t, { at: ts, by: u, a: "create" });
       if (changed) { t.uAt = ts; t.uBy = u; }
       (t.events || []).forEach(e => {
         seenE.add(e.id);
+        const was = s.e.get(e.id);
         if (!s.e.has(e.id) && !e.cBy) { e.cBy = u; e.cAt = ts; }
-        if (s.e.get(e.id) !== evKey(e)) { e.uAt = ts; e.uBy = u; }
+        if (was !== evKey(e)) {
+          e.uAt = ts; e.uBy = u;
+          if (!old || e.type === "create") return;                 // part of creating the topic
+          if (was === undefined) { addLog(t, { at: ts, by: u, a: "ev_add", ev: e.id, ...evSummary(e) }); return; }
+          const prev = JSON.parse(was);
+          LOG_EVENT.forEach(k => {
+            if ((prev[k] ?? "") !== (e[k] ?? "")) addLog(t, { at: ts, by: u, a: "ev_edit", ev: e.id, d: e.date, f: k, from: cut(prev[k]), to: cut(e[k]) });
+          });
+        }
       });
     });
-    s.t.forEach((_, id) => { if (!seenT.has(id)) d.tomb.t[id] = ts; });
-    s.e.forEach((_, id) => { if (!seenE.has(id)) d.tomb.e[id] = ts; });
+    s.e.forEach((key, id) => {
+      if (seenE.has(id)) return;
+      d.tomb.e[id] = ts;
+      const t = byId.get(s.eT.get(id));
+      if (t) { const prev = JSON.parse(key); addLog(t, { at: ts, by: u, a: "ev_del", ev: id, d: prev.date, ty: prev.type, x: cut(prev.text) }); }
+    });
+    s.t.forEach((_, id) => {
+      if (seenT.has(id)) return;
+      d.tomb.t[id] = ts;
+      const inf = s.info.get(id) || {};
+      (d.dellog = d.dellog || []).push({ id: uidL(), at: ts, by: u, tid: id, ref: inf.ref, title: inf.title });
+    });
     d.settings = d.settings || {};
     if (setKey(d.settings) !== s.set) { d.settings.uAt = ts; d.settings.uBy = u; }
     state.snap = snapshot(d);
@@ -82,6 +118,7 @@
 
   /* ---------- merge ---------- */
   const refNum = r => +(String(r || "").match(/(\d+)$/) || [0, 0])[1];
+  const unionById = (x, y) => { const m = new Map(); [...(x || []), ...(y || [])].forEach(e => m.set(e.id, e)); return [...m.values()].sort((p, q) => p.at - q.at); };
 
   function merge(a, b) {
     const tomb = { t: { ...(a.tomb?.t || {}) }, e: { ...(a.tomb?.e || {}) } };
@@ -104,6 +141,7 @@
       const evs = new Map();
       [...cur.events, ...(t.events || [])].forEach(e => { const c = evs.get(e.id); if (!c || (e.uAt || 0) > (c.uAt || 0)) evs.set(e.id, e); });
       out.events = [...evs.values()];
+      out.log = unionById(cur.log, t.log);
       T.set(t.id, out);
     }
     const topics = [...T.values()];
@@ -127,7 +165,7 @@
 
     const sa = a.settings || {}, sb = b.settings || {};
     const settings = (sb.uAt || 0) > (sa.uAt || 0) ? sb : sa;
-    return { seq, topics, settings, tomb };
+    return { seq, topics, settings, tomb, dellog: unionById(a.dellog, b.dellog) };
   }
 
   /* ---------- folder I/O ---------- */
@@ -161,7 +199,7 @@
     if (!state.dir) return;
     const files = await readAll();
     const before = JSON.stringify(db.topics) + JSON.stringify(db.settings);
-    let m = { seq: db.seq, topics: db.topics, settings: db.settings, tomb: db.tomb || { t: {}, e: {} } };
+    let m = { seq: db.seq, topics: db.topics, settings: db.settings, tomb: db.tomb || { t: {}, e: {} }, dellog: db.dellog || [] };
     files.forEach(({ d }) => { m = merge(m, d); });
     migrateTopics(m.topics);
     db = m;
@@ -169,10 +207,37 @@
     try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); } catch (e) { /* ignore */ }
     state.peers = files.filter(f => f.name !== myFileName()).map(f => ({ by: f.d.savedBy || "؟", at: f.d.savedAt || 0 }));
     if (write || !files.some(f => f.name === myFileName())) await writeMine();
+    await autoBackup().catch(err => console.warn("automatic backup failed", err));
     state.lastSync = Date.now();
     state.error = "";
     if (JSON.stringify(db.topics) + JSON.stringify(db.settings) !== before) refreshUI();
     renderStatus();
+  }
+
+  /* ---------- automatic daily backup inside the shared folder ---------- */
+  const BACKUP_DIR = "backups", BACKUP_KEEP = 30;
+  const BACKUP_RE = /^backup-\d{4}-\d{2}-\d{2}\.json$/;
+  async function autoBackup() {
+    const day = todayISO();
+    if (state.backupDay === day || !db.topics.length) return;
+    const dir = await state.dir.getDirectoryHandle(BACKUP_DIR, { create: true });
+    const name = `backup-${day}.json`;
+    let exists = true;
+    try { await dir.getFileHandle(name); } catch (e) { exists = false; }
+    if (!exists) {
+      const fh = await dir.getFileHandle(name, { create: true });
+      const w = await fh.createWritable();
+      await w.write(JSON.stringify({ format: FORMAT, backup: day, savedBy: getUser(), savedAt: Date.now(), ...db }, null, 1));
+      await w.close();
+    }
+    // keep the newest BACKUP_KEEP daily copies
+    const names = [];
+    for await (const [n, h] of dir.entries()) if (h.kind === "file" && BACKUP_RE.test(n)) names.push(n);
+    names.sort().reverse();
+    for (const n of names.slice(BACKUP_KEEP)) await dir.removeEntry(n).catch(() => {});
+    state.backupDay = day;
+    state.backups = Math.min(names.length, BACKUP_KEEP);
+    markBackup();
   }
 
   async function changedOnDisk() {
@@ -259,11 +324,13 @@
     if (st) {
       st.innerHTML = state.dir
         ? `<b>متصل بالمجلد:</b> ${esc(state.dir.name || "")}<br><b>ملفك:</b> ${esc(myFileName())}<br>
-           <b>آخر مزامنة:</b> ${state.lastSync ? hm(state.lastSync) : "—"}${state.error ? `<br><span style="color:var(--danger)">${esc(state.error)}</span>` : ""}
+           <b>آخر مزامنة:</b> ${state.lastSync ? hm(state.lastSync) : "—"}
+           ${state.backupDay ? `<br><b>النسخ الاحتياطي التلقائي:</b> يومياً في المجلد الفرعي «${BACKUP_DIR}» (آخر ${state.backups || 1} نسخة محفوظة، والحد ${BACKUP_KEEP})` : ""}${state.error ? `<br><span style="color:var(--danger)">${esc(state.error)}</span>` : ""}
            ${state.peers.length ? `<br><b>مستخدمون آخرون في المجلد:</b> ${state.peers.map(p => `${esc(p.by)} (آخر حفظ ${p.at ? ymd(p.at) + " " + hm(p.at) : "—"})`).join("، ")}` : ""}`
         : state.pending ? "المجلد المشترك محفوظ لكن يحتاج إذن الوصول من جديد – اضغط «اختيار المجلد المشترك» أو شارة المزامنة في الأعلى."
         : "البيانات محفوظة في هذا المتصفح فقط.";
     }
+    if (typeof renderBackupDue === "function") renderBackupDue();
     const dc = document.getElementById("btnShareOff"); if (dc) dc.classList.toggle("hidden", !state.dir);
     const sn = document.getElementById("btnShareNow"); if (sn) sn.classList.toggle("hidden", !state.dir);
   }

@@ -37,6 +37,7 @@
 .pg .pg-body > * { flex: none; }
 .pg .red { color: #b42318 !important; }
 .pg .mut { color: #6b7280; }
+.pg .hj { display: block; font-size: .82em; font-weight: 400; opacity: .75; line-height: 1.25; }
 .pg .pre { white-space: pre-wrap; }
 .pg .cont { font-size: 10px; color: #6b7280; margin-bottom: 6px; }
 .pg em { font-style: normal; }

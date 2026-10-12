@@ -143,7 +143,21 @@
   .ev .d { font-weight: 700; font-family: Consolas, monospace; }
   .ev .t { font-size: 12px; font-weight: 600; color: var(--c, var(--brand)); border: 1px solid currentColor; border-radius: 999px; padding: 0 8px; }
   .ev .by { color: var(--muted); font-size: 13px; }
+  .hj { display: block; font-size: .8em; color: var(--muted); font-weight: 400; line-height: 1.3; }
+  .hj-hint { color: var(--muted); font-size: 12px; min-height: 16px; }
   .who { font-size: 12px; color: #8a94a6; margin-top: 2px; }
+  .audit { margin-top: 16px; }
+  .audit summary { cursor: pointer; font-weight: 700; font-size: 15px; }
+  .audit ol { list-style: none; margin: 12px 0 0; padding: 0; max-height: 420px; overflow: auto; }
+  .audit li { padding: 6px 0; border-top: 1px solid var(--line); font-size: 13px; }
+  .audit li .w { color: #8a94a6; font-size: 12px; display: block; }
+  .audit li q { background: #f1f5f9; border-radius: 4px; padding: 0 4px; quotes: none; white-space: pre-wrap; }
+  .audit .note { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+  .backup-due { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: #fffbeb; border: 1px solid #f59e0b; color: #7c2d12; border-radius: var(--radius); padding: 10px 14px; margin-top: 16px; font-size: 14px; }
+  .backup-due span { flex: 1; }
+  .del-link { display: block; margin: 14px auto 0; background: none; border: 0; color: var(--muted); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; }
+  #dlgDel table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  #dlgDel th, #dlgDel td { border-bottom: 1px solid var(--line); padding: 6px; text-align: start; }
   .ev .tool { font-size: 12px; background: #f1f5f9; border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; }
   .ev .x { white-space: pre-wrap; margin-top: 2px; }
   .ev .gap { color: var(--muted); font-size: 12px; }
@@ -215,6 +229,7 @@
 <main id="app" class="wrap">
   <!-- list view -->
   <section id="viewList">
+    <div class="backup-due hidden" id="backupDue"><span id="backupDueText"></span><button class="btn" id="btnBackupNow">💾 نسخة احتياطية الآن</button></div>
     <div class="stats" id="stats"></div>
     <div class="filters">
       <input type="search" id="fSearch" placeholder="بحث في العنوان أو الوصف أو الأحداث…">
@@ -236,6 +251,7 @@
       </select>
     </div>
     <div class="list" id="list"></div>
+    <button type="button" class="del-link hidden" id="btnDeleted"></button>
   </section>
 
   <!-- detail view -->
@@ -268,8 +284,19 @@
         </form>
       </div>
     </div>
+    <details class="panel audit" id="detailAudit"></details>
   </section>
 </main>
+
+<!-- deleted topics (audit, app only) -->
+<dialog id="dlgDel">
+  <form method="dialog">
+    <h3>🗂 المواضيع المحذوفة</h3>
+    <p class="muted" style="margin-top:-6px">سجل للاطلاع فقط – يظهر في النظام ولا يُدرج في التقارير. لاسترجاع موضوع محذوف استخدم نسخة احتياطية.</p>
+    <div id="delList" style="max-height:60vh;overflow:auto"></div>
+    <div class="dlg-actions"><button class="btn" value="cancel">إغلاق</button></div>
+  </form>
+</dialog>
 
 <!-- topic dialog -->
 <dialog id="dlgTopic">
@@ -403,6 +430,8 @@
       <div class="field"><label>إعداد</label><input name="preparedBy"></div>
       <div class="field"><label>رقم التقرير (للأسلوب الرسمي)</label><input name="docNo"></div>
     </div>
+    <div class="field"><label>التقويم في النظام والتقارير</label>
+      <select name="calendar"><option value="both">ميلادي وهجري معاً</option><option value="greg">ميلادي فقط</option><option value="hijri">هجري فقط (أم القرى)</option></select></div>
     <div class="field"><label>نص الترويسة بين الشعار والرقم (للأسلوب الرسمي)</label><input name="headTitle" placeholder="مثال: تقرير متابعة"></div>
     <div class="row">
       <div class="field"><label>تصنيف السرية</label>
@@ -522,7 +551,23 @@ const pad = n => String(n).padStart(2, "0");
 const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
 const toUTC = iso => { const [y, m, d] = iso.split("-").map(Number); return Date.UTC(y, m - 1, d); };
 const daysBetween = (a, b) => Math.round((toUTC(b) - toUTC(a)) / 86400000);
-const fmt = iso => iso ? iso.replaceAll("-", "/") : "—";
+/* dates: Gregorian, Hijri (Umm al-Qura, built into the browser) or both – set in report identity */
+const HIJRI_NUM = (() => { try { return new Intl.DateTimeFormat("en-u-ca-islamic-umalqura", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "UTC" }); } catch (e) { return null; } })();
+const HIJRI_TXT = (() => { try { return new Intl.DateTimeFormat("ar-SA-u-ca-islamic-umalqura-nu-latn", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" }); } catch (e) { return null; } })();
+const dateParts = (f, iso) => Object.fromEntries(f.formatToParts(new Date(toUTC(iso))).map(x => [x.type, x.value]));
+const hijri = iso => { if (!iso || !HIJRI_NUM) return ""; const p = dateParts(HIJRI_NUM, iso); return `${p.year}/${p.month}/${p.day}`; };
+const calMode = () => (HIJRI_NUM && typeof db !== "undefined" && db.settings && db.settings.calendar) || (HIJRI_NUM ? "both" : "greg");
+const greg = iso => iso.replaceAll("-", "/");
+// plain text
+const fmt = iso => {
+  if (!iso) return "—";
+  const m = calMode();
+  return m === "greg" ? greg(iso) : m === "hijri" ? hijri(iso) + "هـ" : `${greg(iso)}م – ${hijri(iso)}هـ`;
+};
+// HTML: in "both" mode the Hijri date goes on a second, smaller line (tables, labels)
+const fmtH = iso => (!iso || calMode() !== "both") ? fmt(iso) : `${greg(iso)}<small class="hj">${hijri(iso)}هـ</small>`;
+// year shown next to short dates
+const yearOf = iso => calMode() === "hijri" ? dateParts(HIJRI_NUM, iso).year : iso.slice(0, 4);
 const isoFromUTC = t => { const d = new Date(t); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`; };
 const dateObj = iso => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d); };
 
@@ -551,10 +596,10 @@ function load() {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) {
       const d = JSON.parse(raw);
-      if (d && Array.isArray(d.topics)) return { seq: d.seq || d.topics.length, topics: migrateTopics(d.topics), settings: d.settings || {}, tomb: d.tomb || { t: {}, e: {} } };
+      if (d && Array.isArray(d.topics)) return { seq: d.seq || d.topics.length, topics: migrateTopics(d.topics), settings: d.settings || {}, tomb: d.tomb || { t: {}, e: {} }, dellog: d.dellog || [] };
     }
   } catch (e) { console.warn(e); }
-  return { seq: 0, topics: [], settings: {}, tomb: { t: {}, e: {} } };
+  return { seq: 0, topics: [], settings: {}, tomb: { t: {}, e: {} }, dellog: [] };
 }
 
 function save() {
@@ -681,6 +726,8 @@ function renderList() {
   renderHeader();
   renderStats();
   renderCategories();
+  renderDeletedLink();
+  renderBackupDue();
   const arr = filteredTopics();
   if (!db.topics.length) {
     $("#list").innerHTML = `<div class="empty">لا توجد مواضيع بعد.<br><br>
@@ -741,6 +788,53 @@ function whoHTML(x) {
 
 const stampText = ms => { if (!ms) return ""; const d = new Date(ms); return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 
+/* ================= audit log (app only – never in reports or Excel) ================= */
+const AUDIT_TOPIC = { title: "العنوان", description: "الوصف", category: "التصنيف", party: "الجهة ذات العلاقة", owner: "المسؤول",
+  priority: "الأولوية", status: "الحالة", openDate: "تاريخ الفتح", dueDate: "تاريخ الاستحقاق", closeDate: "تاريخ الإقفال",
+  closeNote: "ملخص الإقفال", nextSteps: "الخطوات التالية", risks: "المخاطر", decision: "القرار المطلوب" };
+const AUDIT_EVENT = { date: "التاريخ", type: "النوع", tool: "الأداة", docRef: "رقم الخطاب / المحضر / القرار", text: "الوصف", by: "المنفذ", to: "المستلم" };
+function auditVal(f, v) {
+  if (v === "" || v == null) return "—";
+  if (f === "status") return (STATUS[v] || {}).ar || v;
+  if (f === "priority") return PRIORITY[v] || v;
+  if (f === "type") return (EVT[v] || {}).ar || v;
+  if (f === "tool") return (TOOLS[v] || {}).ar || v;
+  if (/^(date|openDate|dueDate|closeDate)$/.test(f)) return fmt(v);
+  return v.length > 140 ? v.slice(0, 140) + "…" : v;
+}
+const auditQ = v => `<q>${esc(v)}</q>`;
+function auditText(x) {
+  const evt = () => `حدث ${x.d ? fmt(x.d) : ""}${x.ty && EVT[x.ty] ? " («" + EVT[x.ty].ar + "»)" : ""}`;
+  switch (x.a) {
+    case "create": return "أنشأ الموضوع";
+    case "edit": return `عدّل ${AUDIT_TOPIC[x.f] || x.f}: ${auditQ(auditVal(x.f, x.from))} ← ${auditQ(auditVal(x.f, x.to))}`;
+    case "ev_add": return `أضاف ${evt()}${x.x ? ": " + auditQ(auditVal("text", x.x)) : ""}`;
+    case "ev_edit": return `عدّل ${AUDIT_EVENT[x.f] || x.f} في ${evt()}: ${auditQ(auditVal(x.f, x.from))} ← ${auditQ(auditVal(x.f, x.to))}`;
+    case "ev_del": return `حذف ${evt()}${x.x ? ": " + auditQ(auditVal("text", x.x)) : ""}`;
+    default: return esc(x.a);
+  }
+}
+function renderAudit(t) {
+  const el = $("#detailAudit"), log = (t.log || []).slice().sort((a, b) => b.at - a.at);
+  const open = el.open;
+  el.innerHTML = `<summary>📜 سجل التعديلات (${log.length})</summary>
+    ${log.length ? `<ol>${log.map(x => `<li>${auditText(x)}<span class="w">✍ ${esc(x.by || "مستخدم غير معرّف")} · ${stampText(x.at)}</span></li>`).join("")}</ol>`
+      : `<p class="note">لا توجد تعديلات مسجّلة بعد.</p>`}
+    <p class="note">يظهر هذا السجل في النظام فقط ولا يُدرج في التقارير أو ملف Excel. تُسجَّل الأسماء عند تحديد اسم المستخدم في «المشاركة».</p>`;
+  el.open = open;
+}
+function renderDeletedLink() {
+  const n = (db.dellog || []).length, b = $("#btnDeleted");
+  b.classList.toggle("hidden", !n);
+  b.textContent = `🗂 المواضيع المحذوفة (${n})`;
+}
+$("#btnDeleted").onclick = () => {
+  const arr = (db.dellog || []).slice().sort((a, b) => b.at - a.at);
+  $("#delList").innerHTML = `<table><thead><tr><th>المرجع</th><th>الموضوع</th><th>حذفه</th><th>الوقت</th></tr></thead><tbody>
+    ${arr.map(x => `<tr><td><bdi>${esc(x.ref || "—")}</bdi></td><td>${esc(x.title || "—")}</td><td>${esc(x.by || "مستخدم غير معرّف")}</td><td>${stampText(x.at)}</td></tr>`).join("")}</tbody></table>`;
+  $("#dlgDel").showModal();
+};
+
 function renderDetail() {
   const t = getTopic(ui.current);
   if (!t) { showList(); return; }
@@ -771,6 +865,7 @@ function renderDetail() {
       <button class="btn danger" onclick="deleteTopic()">🔒 حذف الموضوع</button>
     </div>`;
   $("#detailTimeline").innerHTML = timelineHTML(t, true);
+  renderAudit(t);
   $("#eventPanel").classList.toggle("hidden", closed && !ui.editingEvent);
 }
 
@@ -784,6 +879,7 @@ function resetEventForm() {
   $("#eventFormTitle").textContent = "تسجيل حدث / تحديث";
   $("#btnEvSave").textContent = "إضافة للمخطط الزمني";
   $("#btnEvCancel").classList.add("hidden");
+  refreshHijriHints();
 }
 
 function editEvent(id) {
@@ -799,12 +895,16 @@ function editEvent(id) {
   $("#btnEvCancel").classList.remove("hidden");
   $("#eventPanel").classList.remove("hidden");
   $("#eventPanel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  refreshHijriHints();
   f.text.focus();
 }
 
 function deleteEvent(id) {
   const t = getTopic(ui.current), e = t.events.find(x => x.id === id);
   requirePin("حذف حدث", `${fmt(e.date)} – ${evLabel(e)}: ${e.text.length > 90 ? e.text.slice(0, 90) + "…" : e.text}`, "حذف الحدث", () => {
+    // a background sync may have replaced db while the PIN dialog was open: look the topic up again
+    const t = getTopic(ui.current);
+    if (!t) { showList(); return; }
     t.events = t.events.filter(x => x.id !== id);
     if (e.type === "close" && t.status === "closed") { t.status = "open"; t.closeDate = ""; t.closeNote = ""; }
     save(); renderDetail(); toast("تم حذف الحدث");
@@ -814,10 +914,12 @@ function deleteEvent(id) {
 $("#eventForm").addEventListener("submit", ev => {
   ev.preventDefault();
   const f = ev.target, t = getTopic(ui.current);
+  if (!t) { showList(); return; }
   const data = { date: f.date.value, type: f.type.value, tool: f.tool.value, text: f.text.value.trim(), by: f.by.value.trim(), to: f.to.value.trim(), docRef: f.docRef.value.trim() };
   if (!data.text) return;
   if (ui.editingEvent) {
     const e = t.events.find(x => x.id === ui.editingEvent);
+    if (!e) { alert("تعذّر حفظ التعديل: حُذف هذا الحدث من جهاز آخر."); resetEventForm(); renderDetail(); return; }
     Object.assign(e, data);
     if (e.type === "create") t.openDate = e.date;
     if (e.type === "close") { t.closeDate = e.date; t.closeNote = e.text; }
@@ -848,6 +950,7 @@ function openTopicDialog(id) {
   } else {
     f.openDate.value = todayISO();
   }
+  refreshHijriHints();
   $("#dlgTopic").showModal();
   f.title.focus();
 }
@@ -858,6 +961,7 @@ $("#topicForm").addEventListener("submit", ev => {
   const data = Object.fromEntries(["title", "description", "category", "party", "owner", "priority", "openDate", "dueDate", "status", "nextSteps", "risks", "decision"].map(k => [k, f[k].value.trim()]));
   if (editingTopicId) {
     const t = getTopic(editingTopicId);
+    if (!t) { alert("تعذّر حفظ التعديل: حُذف هذا الموضوع من جهاز آخر."); showList(); return; }
     const oldStatus = t.status;
     ["title", "description", "category", "party", "owner", "priority", "dueDate", "nextSteps", "risks", "decision"].forEach(k => t[k] = data[k]);
     if (data.openDate !== t.openDate) {
@@ -881,12 +985,14 @@ document.querySelectorAll("dialog [data-close]").forEach(b => b.onclick = () => 
 function openCloseDialog() {
   const f = $("#closeForm"); f.reset(); f.date.value = todayISO();
   $("#closeTool").innerHTML = `<option value="">— بدون —</option>` + Object.entries(TOOLS).map(([k, v]) => `<option value="${k}">${v.emoji} ${v.ar}</option>`).join("");
+  refreshHijriHints();
   $("#dlgClose").showModal(); f.text.focus();
 }
 
 $("#closeForm").addEventListener("submit", ev => {
   if (ev.submitter?.value !== "ok") return;
   const f = ev.target, t = getTopic(ui.current);
+  if (!t) { showList(); return; }
   if (f.date.value < t.openDate) { ev.preventDefault(); alert("تاريخ الإقفال يسبق تاريخ الفتح."); return; }
   t.status = "closed"; t.closeDate = f.date.value; t.closeNote = f.text.value.trim();
   addEvent(t, { date: t.closeDate, type: "close", text: t.closeNote, by: f.by.value.trim(), to: f.to.value.trim(), docRef: f.docRef.value.trim(), tool: f.tool.value });
@@ -970,8 +1076,23 @@ $("#btnBack").onclick = showList;
 $("#btnNew").onclick = () => openTopicDialog();
 
 /* ================= backup / restore ================= */
-$("#btnBackup").onclick = () => {
+const BACKUP_KEY = "topicTracker.lastBackup", FIRST_KEY = "topicTracker.firstUse", BACKUP_DAYS = 7;
+const lsGet = k => { try { return +localStorage.getItem(k) || 0; } catch (e) { return 0; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, String(v)); } catch (e) { /* ignore */ } };
+function markBackup() { lsSet(BACKUP_KEY, Date.now()); if (ui.view !== "detail") renderBackupDue(); }
+// local mode only: remind when no backup was saved for a week (shared mode backs up daily by itself)
+function renderBackupDue() {
+  if (!lsGet(FIRST_KEY)) lsSet(FIRST_KEY, Date.now());
+  const last = lsGet(BACKUP_KEY), since = Date.now() - (last || lsGet(FIRST_KEY));
+  const due = db.topics.length > 0 && !(window.Sync && Sync.connected) && since > BACKUP_DAYS * 864e5;
+  $("#backupDue").classList.toggle("hidden", !due);
+  if (due) $("#backupDueText").textContent = last
+    ? `⚠ آخر نسخة احتياطية قبل ${Math.floor(since / 864e5)} يوماً. البيانات محفوظة في هذا المتصفح فقط – احفظ نسخة احتياطية في موقع معتمد لدى الهيئة.`
+    : "⚠ لم تُحفظ أي نسخة احتياطية بعد. البيانات محفوظة في هذا المتصفح فقط – احفظ نسخة احتياطية في موقع معتمد لدى الهيئة.";
+}
+$("#btnBackup").onclick = $("#btnBackupNow").onclick = () => {
   download(new Blob([JSON.stringify(db, null, 2)], { type: "application/json" }), `topics-backup-${todayISO()}.json`);
+  markBackup();
 };
 $("#btnRestore").onclick = () => $("#fileRestore").click();
 $("#fileRestore").onchange = async e => {
@@ -981,7 +1102,7 @@ $("#fileRestore").onchange = async e => {
     const d = JSON.parse(await file.text());
     if (!d || !Array.isArray(d.topics)) throw new Error("ملف غير صالح");
     requirePin("استعادة نسخة احتياطية", `استعادة ${d.topics.length} موضوع من الملف «${file.name}». سيتم استبدال البيانات الحالية${window.Sync && Sync.connected ? " لدى جميع المشاركين في المجلد" : ""}.`, "استعادة", () => {
-      db = { seq: d.seq || d.topics.length, topics: migrateTopics(d.topics), settings: d.settings || db.settings || {}, tomb: db.tomb || { t: {}, e: {} } };
+      db = { seq: d.seq || d.topics.length, topics: migrateTopics(d.topics), settings: d.settings || db.settings || {}, tomb: db.tomb || { t: {}, e: {} }, dellog: db.dellog || [] };
       save(); showList(); toast("تمت الاستعادة");
     });
   } catch (err) { alert("تعذرت الاستعادة: " + err.message); }
@@ -1055,18 +1176,18 @@ async function exportExcel(topics) {
 
   /* ---- sheet 2: timeline log ---- */
   const s2 = wb.addWorksheet("السجل الزمني", { views: [{ rightToLeft: true, state: "frozen", ySplit: 3 }] });
-  const h2 = ["المرجع", "الموضوع", "التاريخ", "نوع الحدث", "أداة الحدث", "رقم الخطاب / المحضر / القرار", "ما تم", "المنفذ", "المستلم", "اليوم من الفتح", "الفاصل عن الحدث السابق (يوم)"];
+  const h2 = ["المرجع", "الموضوع", "التاريخ", "التاريخ الهجري", "نوع الحدث", "أداة الحدث", "رقم الخطاب / المحضر / القرار", "ما تم", "المنفذ", "المستلم", "اليوم من الفتح", "الفاصل عن الحدث السابق (يوم)"];
   addTitle(s2, "السجل الزمني للأحداث", h2.length);
   styleHeader(s2.addRow(h2));
-  [9, 30, 13, 11, 15, 18, 52, 18, 18, 12, 14].forEach((w, i) => s2.getColumn(i + 1).width = w);
+  [9, 30, 13, 13, 11, 15, 18, 52, 18, 18, 12, 14].forEach((w, i) => s2.getColumn(i + 1).width = w);
   topics.forEach((t, ti) => {
     const evs = sortedEvents(t);
     const band = ti % 2 ? "FFF6F8FB" : "FFFFFFFF";
     evs.forEach((e, i) => {
-      const r = s2.addRow([t.ref, t.title, dateObj(e.date), evTypeAr(e), e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : "", e.docRef || "", e.text, e.by, e.to || "",
+      const r = s2.addRow([t.ref, t.title, dateObj(e.date), hijri(e.date), evTypeAr(e), e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : "", e.docRef || "", e.text, e.by, e.to || "",
         daysBetween(t.openDate, e.date), i ? daysBetween(evs[i - 1].date, e.date) : null]);
       r.eachCell({ includeEmpty: true }, c => { c.border = XL.border; c.fill = XL.fill(band); c.alignment = { vertical: "top", wrapText: true, horizontal: "right" }; });
-      r.getCell(4).font = { bold: true, color: { argb: XL.hex(evColor(e)) } };
+      r.getCell(5).font = { bold: true, color: { argb: XL.hex(evColor(e)) } };
     });
   });
   s2.getColumn(3).numFmt = "yyyy/mm/dd";
@@ -1196,7 +1317,22 @@ function loadDemo() {
 }
 
 /* ================= init ================= */
+/* Hijri equivalent under every date field */
+function refreshHijriHints() {
+  document.querySelectorAll('input[type="date"]').forEach(inp => {
+    let hint = inp.nextElementSibling;
+    if (!hint || !hint.classList.contains("hj-hint")) {
+      hint = document.createElement("small");
+      hint.className = "hj-hint";
+      inp.after(hint);
+      ["input", "change"].forEach(ev => inp.addEventListener(ev, refreshHijriHints));
+    }
+    hint.textContent = inp.value && HIJRI_NUM ? `الموافق ${hijri(inp.value)}هـ` : "";
+  });
+}
+
 (function init() {
+  refreshHijriHints();
   const m = location.hash.match(/t=([\w-]+)/);
   if (m && getTopic(m[1])) showDetail(m[1]); else showList();
 })();

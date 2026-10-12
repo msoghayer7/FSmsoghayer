@@ -67,6 +67,7 @@ window.BRAND = {
 .pg .pg-body > * { flex: none; }
 .pg .red { color: #b42318 !important; }
 .pg .mut { color: #6b7280; }
+.pg .hj { display: block; font-size: .82em; font-weight: 400; opacity: .75; line-height: 1.25; }
 .pg .pre { white-space: pre-wrap; }
 .pg .cont { font-size: 10px; color: #6b7280; margin-bottom: 6px; }
 .pg em { font-style: normal; }
@@ -527,7 +528,21 @@ window.BRAND = {
   .ev .d { font-weight: 700; font-family: Consolas, monospace; }
   .ev .t { font-size: 12px; font-weight: 600; color: var(--c, var(--brand)); border: 1px solid currentColor; border-radius: 999px; padding: 0 8px; }
   .ev .by { color: var(--muted); font-size: 13px; }
+  .hj { display: block; font-size: .8em; color: var(--muted); font-weight: 400; line-height: 1.3; }
+  .hj-hint { color: var(--muted); font-size: 12px; min-height: 16px; }
   .who { font-size: 12px; color: #8a94a6; margin-top: 2px; }
+  .audit { margin-top: 16px; }
+  .audit summary { cursor: pointer; font-weight: 700; font-size: 15px; }
+  .audit ol { list-style: none; margin: 12px 0 0; padding: 0; max-height: 420px; overflow: auto; }
+  .audit li { padding: 6px 0; border-top: 1px solid var(--line); font-size: 13px; }
+  .audit li .w { color: #8a94a6; font-size: 12px; display: block; }
+  .audit li q { background: #f1f5f9; border-radius: 4px; padding: 0 4px; quotes: none; white-space: pre-wrap; }
+  .audit .note { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+  .backup-due { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: #fffbeb; border: 1px solid #f59e0b; color: #7c2d12; border-radius: var(--radius); padding: 10px 14px; margin-top: 16px; font-size: 14px; }
+  .backup-due span { flex: 1; }
+  .del-link { display: block; margin: 14px auto 0; background: none; border: 0; color: var(--muted); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; }
+  #dlgDel table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  #dlgDel th, #dlgDel td { border-bottom: 1px solid var(--line); padding: 6px; text-align: start; }
   .ev .tool { font-size: 12px; background: #f1f5f9; border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; }
   .ev .x { white-space: pre-wrap; margin-top: 2px; }
   .ev .gap { color: var(--muted); font-size: 12px; }
@@ -582,7 +597,7 @@ window.BRAND = {
 
 <header class="top">
   <div class="wrap">
-    <div class="brandline"><img id="hdrLogo" class="hidden" alt=""><div><h1>نظام متابعة المواضيع <span class="ver" id="appVer">V12</span></h1><span id="hdrOrg"></span> <button type="button" class="sync-pill local" id="syncPill">💻 على هذا الجهاز فقط</button></div></div>
+    <div class="brandline"><img id="hdrLogo" class="hidden" alt=""><div><h1>نظام متابعة المواضيع <span class="ver" id="appVer">V13</span></h1><span id="hdrOrg"></span> <button type="button" class="sync-pill local" id="syncPill">💻 على هذا الجهاز فقط</button></div></div>
     <div class="toolbar">
       <button class="btn primary" style="background:#fff;color:var(--brand)" id="btnNew">＋ موضوع جديد</button>
       <button class="btn ghost" id="btnExcel">⬇ تصدير Excel</button>
@@ -599,6 +614,7 @@ window.BRAND = {
 <main id="app" class="wrap">
   <!-- list view -->
   <section id="viewList">
+    <div class="backup-due hidden" id="backupDue"><span id="backupDueText"></span><button class="btn" id="btnBackupNow">💾 نسخة احتياطية الآن</button></div>
     <div class="stats" id="stats"></div>
     <div class="filters">
       <input type="search" id="fSearch" placeholder="بحث في العنوان أو الوصف أو الأحداث…">
@@ -620,6 +636,7 @@ window.BRAND = {
       </select>
     </div>
     <div class="list" id="list"></div>
+    <button type="button" class="del-link hidden" id="btnDeleted"></button>
   </section>
 
   <!-- detail view -->
@@ -652,8 +669,19 @@ window.BRAND = {
         </form>
       </div>
     </div>
+    <details class="panel audit" id="detailAudit"></details>
   </section>
 </main>
+
+<!-- deleted topics (audit, app only) -->
+<dialog id="dlgDel">
+  <form method="dialog">
+    <h3>🗂 المواضيع المحذوفة</h3>
+    <p class="muted" style="margin-top:-6px">سجل للاطلاع فقط – يظهر في النظام ولا يُدرج في التقارير. لاسترجاع موضوع محذوف استخدم نسخة احتياطية.</p>
+    <div id="delList" style="max-height:60vh;overflow:auto"></div>
+    <div class="dlg-actions"><button class="btn" value="cancel">إغلاق</button></div>
+  </form>
+</dialog>
 
 <!-- topic dialog -->
 <dialog id="dlgTopic">
@@ -787,6 +815,8 @@ window.BRAND = {
       <div class="field"><label>إعداد</label><input name="preparedBy"></div>
       <div class="field"><label>رقم التقرير (للأسلوب الرسمي)</label><input name="docNo"></div>
     </div>
+    <div class="field"><label>التقويم في النظام والتقارير</label>
+      <select name="calendar"><option value="both">ميلادي وهجري معاً</option><option value="greg">ميلادي فقط</option><option value="hijri">هجري فقط (أم القرى)</option></select></div>
     <div class="field"><label>نص الترويسة بين الشعار والرقم (للأسلوب الرسمي)</label><input name="headTitle" placeholder="مثال: تقرير متابعة"></div>
     <div class="row">
       <div class="field"><label>تصنيف السرية</label>
@@ -1356,7 +1386,23 @@ const pad = n => String(n).padStart(2, "0");
 const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
 const toUTC = iso => { const [y, m, d] = iso.split("-").map(Number); return Date.UTC(y, m - 1, d); };
 const daysBetween = (a, b) => Math.round((toUTC(b) - toUTC(a)) / 86400000);
-const fmt = iso => iso ? iso.replaceAll("-", "/") : "—";
+/* dates: Gregorian, Hijri (Umm al-Qura, built into the browser) or both – set in report identity */
+const HIJRI_NUM = (() => { try { return new Intl.DateTimeFormat("en-u-ca-islamic-umalqura", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "UTC" }); } catch (e) { return null; } })();
+const HIJRI_TXT = (() => { try { return new Intl.DateTimeFormat("ar-SA-u-ca-islamic-umalqura-nu-latn", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" }); } catch (e) { return null; } })();
+const dateParts = (f, iso) => Object.fromEntries(f.formatToParts(new Date(toUTC(iso))).map(x => [x.type, x.value]));
+const hijri = iso => { if (!iso || !HIJRI_NUM) return ""; const p = dateParts(HIJRI_NUM, iso); return `${p.year}/${p.month}/${p.day}`; };
+const calMode = () => (HIJRI_NUM && typeof db !== "undefined" && db.settings && db.settings.calendar) || (HIJRI_NUM ? "both" : "greg");
+const greg = iso => iso.replaceAll("-", "/");
+// plain text
+const fmt = iso => {
+  if (!iso) return "—";
+  const m = calMode();
+  return m === "greg" ? greg(iso) : m === "hijri" ? hijri(iso) + "هـ" : `${greg(iso)}م – ${hijri(iso)}هـ`;
+};
+// HTML: in "both" mode the Hijri date goes on a second, smaller line (tables, labels)
+const fmtH = iso => (!iso || calMode() !== "both") ? fmt(iso) : `${greg(iso)}<small class="hj">${hijri(iso)}هـ</small>`;
+// year shown next to short dates
+const yearOf = iso => calMode() === "hijri" ? dateParts(HIJRI_NUM, iso).year : iso.slice(0, 4);
 const isoFromUTC = t => { const d = new Date(t); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`; };
 const dateObj = iso => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d); };
 
@@ -1385,10 +1431,10 @@ function load() {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) {
       const d = JSON.parse(raw);
-      if (d && Array.isArray(d.topics)) return { seq: d.seq || d.topics.length, topics: migrateTopics(d.topics), settings: d.settings || {}, tomb: d.tomb || { t: {}, e: {} } };
+      if (d && Array.isArray(d.topics)) return { seq: d.seq || d.topics.length, topics: migrateTopics(d.topics), settings: d.settings || {}, tomb: d.tomb || { t: {}, e: {} }, dellog: d.dellog || [] };
     }
   } catch (e) { console.warn(e); }
-  return { seq: 0, topics: [], settings: {}, tomb: { t: {}, e: {} } };
+  return { seq: 0, topics: [], settings: {}, tomb: { t: {}, e: {} }, dellog: [] };
 }
 
 function save() {
@@ -1515,6 +1561,8 @@ function renderList() {
   renderHeader();
   renderStats();
   renderCategories();
+  renderDeletedLink();
+  renderBackupDue();
   const arr = filteredTopics();
   if (!db.topics.length) {
     $("#list").innerHTML = `<div class="empty">لا توجد مواضيع بعد.<br><br>
@@ -1575,6 +1623,53 @@ function whoHTML(x) {
 
 const stampText = ms => { if (!ms) return ""; const d = new Date(ms); return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
 
+/* ================= audit log (app only – never in reports or Excel) ================= */
+const AUDIT_TOPIC = { title: "العنوان", description: "الوصف", category: "التصنيف", party: "الجهة ذات العلاقة", owner: "المسؤول",
+  priority: "الأولوية", status: "الحالة", openDate: "تاريخ الفتح", dueDate: "تاريخ الاستحقاق", closeDate: "تاريخ الإقفال",
+  closeNote: "ملخص الإقفال", nextSteps: "الخطوات التالية", risks: "المخاطر", decision: "القرار المطلوب" };
+const AUDIT_EVENT = { date: "التاريخ", type: "النوع", tool: "الأداة", docRef: "رقم الخطاب / المحضر / القرار", text: "الوصف", by: "المنفذ", to: "المستلم" };
+function auditVal(f, v) {
+  if (v === "" || v == null) return "—";
+  if (f === "status") return (STATUS[v] || {}).ar || v;
+  if (f === "priority") return PRIORITY[v] || v;
+  if (f === "type") return (EVT[v] || {}).ar || v;
+  if (f === "tool") return (TOOLS[v] || {}).ar || v;
+  if (/^(date|openDate|dueDate|closeDate)$/.test(f)) return fmt(v);
+  return v.length > 140 ? v.slice(0, 140) + "…" : v;
+}
+const auditQ = v => `<q>${esc(v)}</q>`;
+function auditText(x) {
+  const evt = () => `حدث ${x.d ? fmt(x.d) : ""}${x.ty && EVT[x.ty] ? " («" + EVT[x.ty].ar + "»)" : ""}`;
+  switch (x.a) {
+    case "create": return "أنشأ الموضوع";
+    case "edit": return `عدّل ${AUDIT_TOPIC[x.f] || x.f}: ${auditQ(auditVal(x.f, x.from))} ← ${auditQ(auditVal(x.f, x.to))}`;
+    case "ev_add": return `أضاف ${evt()}${x.x ? ": " + auditQ(auditVal("text", x.x)) : ""}`;
+    case "ev_edit": return `عدّل ${AUDIT_EVENT[x.f] || x.f} في ${evt()}: ${auditQ(auditVal(x.f, x.from))} ← ${auditQ(auditVal(x.f, x.to))}`;
+    case "ev_del": return `حذف ${evt()}${x.x ? ": " + auditQ(auditVal("text", x.x)) : ""}`;
+    default: return esc(x.a);
+  }
+}
+function renderAudit(t) {
+  const el = $("#detailAudit"), log = (t.log || []).slice().sort((a, b) => b.at - a.at);
+  const open = el.open;
+  el.innerHTML = `<summary>📜 سجل التعديلات (${log.length})</summary>
+    ${log.length ? `<ol>${log.map(x => `<li>${auditText(x)}<span class="w">✍ ${esc(x.by || "مستخدم غير معرّف")} · ${stampText(x.at)}</span></li>`).join("")}</ol>`
+      : `<p class="note">لا توجد تعديلات مسجّلة بعد.</p>`}
+    <p class="note">يظهر هذا السجل في النظام فقط ولا يُدرج في التقارير أو ملف Excel. تُسجَّل الأسماء عند تحديد اسم المستخدم في «المشاركة».</p>`;
+  el.open = open;
+}
+function renderDeletedLink() {
+  const n = (db.dellog || []).length, b = $("#btnDeleted");
+  b.classList.toggle("hidden", !n);
+  b.textContent = `🗂 المواضيع المحذوفة (${n})`;
+}
+$("#btnDeleted").onclick = () => {
+  const arr = (db.dellog || []).slice().sort((a, b) => b.at - a.at);
+  $("#delList").innerHTML = `<table><thead><tr><th>المرجع</th><th>الموضوع</th><th>حذفه</th><th>الوقت</th></tr></thead><tbody>
+    ${arr.map(x => `<tr><td><bdi>${esc(x.ref || "—")}</bdi></td><td>${esc(x.title || "—")}</td><td>${esc(x.by || "مستخدم غير معرّف")}</td><td>${stampText(x.at)}</td></tr>`).join("")}</tbody></table>`;
+  $("#dlgDel").showModal();
+};
+
 function renderDetail() {
   const t = getTopic(ui.current);
   if (!t) { showList(); return; }
@@ -1605,6 +1700,7 @@ function renderDetail() {
       <button class="btn danger" onclick="deleteTopic()">🔒 حذف الموضوع</button>
     </div>`;
   $("#detailTimeline").innerHTML = timelineHTML(t, true);
+  renderAudit(t);
   $("#eventPanel").classList.toggle("hidden", closed && !ui.editingEvent);
 }
 
@@ -1618,6 +1714,7 @@ function resetEventForm() {
   $("#eventFormTitle").textContent = "تسجيل حدث / تحديث";
   $("#btnEvSave").textContent = "إضافة للمخطط الزمني";
   $("#btnEvCancel").classList.add("hidden");
+  refreshHijriHints();
 }
 
 function editEvent(id) {
@@ -1633,12 +1730,16 @@ function editEvent(id) {
   $("#btnEvCancel").classList.remove("hidden");
   $("#eventPanel").classList.remove("hidden");
   $("#eventPanel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  refreshHijriHints();
   f.text.focus();
 }
 
 function deleteEvent(id) {
   const t = getTopic(ui.current), e = t.events.find(x => x.id === id);
   requirePin("حذف حدث", `${fmt(e.date)} – ${evLabel(e)}: ${e.text.length > 90 ? e.text.slice(0, 90) + "…" : e.text}`, "حذف الحدث", () => {
+    // a background sync may have replaced db while the PIN dialog was open: look the topic up again
+    const t = getTopic(ui.current);
+    if (!t) { showList(); return; }
     t.events = t.events.filter(x => x.id !== id);
     if (e.type === "close" && t.status === "closed") { t.status = "open"; t.closeDate = ""; t.closeNote = ""; }
     save(); renderDetail(); toast("تم حذف الحدث");
@@ -1648,10 +1749,12 @@ function deleteEvent(id) {
 $("#eventForm").addEventListener("submit", ev => {
   ev.preventDefault();
   const f = ev.target, t = getTopic(ui.current);
+  if (!t) { showList(); return; }
   const data = { date: f.date.value, type: f.type.value, tool: f.tool.value, text: f.text.value.trim(), by: f.by.value.trim(), to: f.to.value.trim(), docRef: f.docRef.value.trim() };
   if (!data.text) return;
   if (ui.editingEvent) {
     const e = t.events.find(x => x.id === ui.editingEvent);
+    if (!e) { alert("تعذّر حفظ التعديل: حُذف هذا الحدث من جهاز آخر."); resetEventForm(); renderDetail(); return; }
     Object.assign(e, data);
     if (e.type === "create") t.openDate = e.date;
     if (e.type === "close") { t.closeDate = e.date; t.closeNote = e.text; }
@@ -1682,6 +1785,7 @@ function openTopicDialog(id) {
   } else {
     f.openDate.value = todayISO();
   }
+  refreshHijriHints();
   $("#dlgTopic").showModal();
   f.title.focus();
 }
@@ -1692,6 +1796,7 @@ $("#topicForm").addEventListener("submit", ev => {
   const data = Object.fromEntries(["title", "description", "category", "party", "owner", "priority", "openDate", "dueDate", "status", "nextSteps", "risks", "decision"].map(k => [k, f[k].value.trim()]));
   if (editingTopicId) {
     const t = getTopic(editingTopicId);
+    if (!t) { alert("تعذّر حفظ التعديل: حُذف هذا الموضوع من جهاز آخر."); showList(); return; }
     const oldStatus = t.status;
     ["title", "description", "category", "party", "owner", "priority", "dueDate", "nextSteps", "risks", "decision"].forEach(k => t[k] = data[k]);
     if (data.openDate !== t.openDate) {
@@ -1715,12 +1820,14 @@ document.querySelectorAll("dialog [data-close]").forEach(b => b.onclick = () => 
 function openCloseDialog() {
   const f = $("#closeForm"); f.reset(); f.date.value = todayISO();
   $("#closeTool").innerHTML = `<option value="">— بدون —</option>` + Object.entries(TOOLS).map(([k, v]) => `<option value="${k}">${v.emoji} ${v.ar}</option>`).join("");
+  refreshHijriHints();
   $("#dlgClose").showModal(); f.text.focus();
 }
 
 $("#closeForm").addEventListener("submit", ev => {
   if (ev.submitter?.value !== "ok") return;
   const f = ev.target, t = getTopic(ui.current);
+  if (!t) { showList(); return; }
   if (f.date.value < t.openDate) { ev.preventDefault(); alert("تاريخ الإقفال يسبق تاريخ الفتح."); return; }
   t.status = "closed"; t.closeDate = f.date.value; t.closeNote = f.text.value.trim();
   addEvent(t, { date: t.closeDate, type: "close", text: t.closeNote, by: f.by.value.trim(), to: f.to.value.trim(), docRef: f.docRef.value.trim(), tool: f.tool.value });
@@ -1804,8 +1911,23 @@ $("#btnBack").onclick = showList;
 $("#btnNew").onclick = () => openTopicDialog();
 
 /* ================= backup / restore ================= */
-$("#btnBackup").onclick = () => {
+const BACKUP_KEY = "topicTracker.lastBackup", FIRST_KEY = "topicTracker.firstUse", BACKUP_DAYS = 7;
+const lsGet = k => { try { return +localStorage.getItem(k) || 0; } catch (e) { return 0; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, String(v)); } catch (e) { /* ignore */ } };
+function markBackup() { lsSet(BACKUP_KEY, Date.now()); if (ui.view !== "detail") renderBackupDue(); }
+// local mode only: remind when no backup was saved for a week (shared mode backs up daily by itself)
+function renderBackupDue() {
+  if (!lsGet(FIRST_KEY)) lsSet(FIRST_KEY, Date.now());
+  const last = lsGet(BACKUP_KEY), since = Date.now() - (last || lsGet(FIRST_KEY));
+  const due = db.topics.length > 0 && !(window.Sync && Sync.connected) && since > BACKUP_DAYS * 864e5;
+  $("#backupDue").classList.toggle("hidden", !due);
+  if (due) $("#backupDueText").textContent = last
+    ? `⚠ آخر نسخة احتياطية قبل ${Math.floor(since / 864e5)} يوماً. البيانات محفوظة في هذا المتصفح فقط – احفظ نسخة احتياطية في موقع معتمد لدى الهيئة.`
+    : "⚠ لم تُحفظ أي نسخة احتياطية بعد. البيانات محفوظة في هذا المتصفح فقط – احفظ نسخة احتياطية في موقع معتمد لدى الهيئة.";
+}
+$("#btnBackup").onclick = $("#btnBackupNow").onclick = () => {
   download(new Blob([JSON.stringify(db, null, 2)], { type: "application/json" }), `topics-backup-${todayISO()}.json`);
+  markBackup();
 };
 $("#btnRestore").onclick = () => $("#fileRestore").click();
 $("#fileRestore").onchange = async e => {
@@ -1815,7 +1937,7 @@ $("#fileRestore").onchange = async e => {
     const d = JSON.parse(await file.text());
     if (!d || !Array.isArray(d.topics)) throw new Error("ملف غير صالح");
     requirePin("استعادة نسخة احتياطية", `استعادة ${d.topics.length} موضوع من الملف «${file.name}». سيتم استبدال البيانات الحالية${window.Sync && Sync.connected ? " لدى جميع المشاركين في المجلد" : ""}.`, "استعادة", () => {
-      db = { seq: d.seq || d.topics.length, topics: migrateTopics(d.topics), settings: d.settings || db.settings || {}, tomb: db.tomb || { t: {}, e: {} } };
+      db = { seq: d.seq || d.topics.length, topics: migrateTopics(d.topics), settings: d.settings || db.settings || {}, tomb: db.tomb || { t: {}, e: {} }, dellog: db.dellog || [] };
       save(); showList(); toast("تمت الاستعادة");
     });
   } catch (err) { alert("تعذرت الاستعادة: " + err.message); }
@@ -1889,18 +2011,18 @@ async function exportExcel(topics) {
 
   /* ---- sheet 2: timeline log ---- */
   const s2 = wb.addWorksheet("السجل الزمني", { views: [{ rightToLeft: true, state: "frozen", ySplit: 3 }] });
-  const h2 = ["المرجع", "الموضوع", "التاريخ", "نوع الحدث", "أداة الحدث", "رقم الخطاب / المحضر / القرار", "ما تم", "المنفذ", "المستلم", "اليوم من الفتح", "الفاصل عن الحدث السابق (يوم)"];
+  const h2 = ["المرجع", "الموضوع", "التاريخ", "التاريخ الهجري", "نوع الحدث", "أداة الحدث", "رقم الخطاب / المحضر / القرار", "ما تم", "المنفذ", "المستلم", "اليوم من الفتح", "الفاصل عن الحدث السابق (يوم)"];
   addTitle(s2, "السجل الزمني للأحداث", h2.length);
   styleHeader(s2.addRow(h2));
-  [9, 30, 13, 11, 15, 18, 52, 18, 18, 12, 14].forEach((w, i) => s2.getColumn(i + 1).width = w);
+  [9, 30, 13, 13, 11, 15, 18, 52, 18, 18, 12, 14].forEach((w, i) => s2.getColumn(i + 1).width = w);
   topics.forEach((t, ti) => {
     const evs = sortedEvents(t);
     const band = ti % 2 ? "FFF6F8FB" : "FFFFFFFF";
     evs.forEach((e, i) => {
-      const r = s2.addRow([t.ref, t.title, dateObj(e.date), evTypeAr(e), e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : "", e.docRef || "", e.text, e.by, e.to || "",
+      const r = s2.addRow([t.ref, t.title, dateObj(e.date), hijri(e.date), evTypeAr(e), e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : "", e.docRef || "", e.text, e.by, e.to || "",
         daysBetween(t.openDate, e.date), i ? daysBetween(evs[i - 1].date, e.date) : null]);
       r.eachCell({ includeEmpty: true }, c => { c.border = XL.border; c.fill = XL.fill(band); c.alignment = { vertical: "top", wrapText: true, horizontal: "right" }; });
-      r.getCell(4).font = { bold: true, color: { argb: XL.hex(evColor(e)) } };
+      r.getCell(5).font = { bold: true, color: { argb: XL.hex(evColor(e)) } };
     });
   });
   s2.getColumn(3).numFmt = "yyyy/mm/dd";
@@ -2030,7 +2152,22 @@ function loadDemo() {
 }
 
 /* ================= init ================= */
+/* Hijri equivalent under every date field */
+function refreshHijriHints() {
+  document.querySelectorAll('input[type="date"]').forEach(inp => {
+    let hint = inp.nextElementSibling;
+    if (!hint || !hint.classList.contains("hj-hint")) {
+      hint = document.createElement("small");
+      hint.className = "hj-hint";
+      inp.after(hint);
+      ["input", "change"].forEach(ev => inp.addEventListener(ev, refreshHijriHints));
+    }
+    hint.textContent = inp.value && HIJRI_NUM ? `الموافق ${hijri(inp.value)}هـ` : "";
+  });
+}
+
 (function init() {
+  refreshHijriHints();
   const m = location.hash.match(/t=([\w-]+)/);
   if (m && getTopic(m[1])) showDetail(m[1]); else showList();
 })();
@@ -2057,8 +2194,19 @@ const DAY_MS = 86400000;
 const PG_W = 1123, PG_H = 793;   // A4 landscape at 96dpi
 
 /* ---------------- text helpers ---------------- */
-const fmtLong = iso => { if (!iso) return "—"; const [y, m, d] = iso.split("-").map(Number); return `${d} ${AR_MONTHS[m - 1]} ${y}`; };
-const fmtShort = iso => { if (!iso) return "—"; const [, m, d] = iso.split("-").map(Number); return `${d} ${AR_MONTHS[m - 1]}`; };
+const fmtLong = iso => {
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("-").map(Number), g = `${d} ${AR_MONTHS[m - 1]} ${y}`, mode = calMode();
+  if (mode === "greg" || !HIJRI_TXT) return g;
+  const p = dateParts(HIJRI_TXT, iso), hj = `${p.day} ${p.month} ${p.year}هـ`;
+  return mode === "hijri" ? hj : `${g}م (${hj})`;
+};
+const fmtShort = iso => {
+  if (!iso) return "—";
+  if (calMode() === "hijri" && HIJRI_TXT) { const p = dateParts(HIJRI_TXT, iso); return `${p.day} ${p.month}`; }
+  const [, m, d] = iso.split("-").map(Number);
+  return `${d} ${AR_MONTHS[m - 1]}`;
+};
 const clip = (s, n) => { s = String(s ?? "").replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, n).trim() + "…" : s; };
 const lines = s => String(s ?? "").split(/\n+/).map(x => x.replace(/^[\s\-•*·]+/, "").trim()).filter(Boolean);
 
@@ -2333,7 +2481,7 @@ class Pager {
    Settings
    ===================================================================== */
 const DEFAULT_SETTINGS = {
-  org: "هيئة الرقابة النووية والإشعاعية", dept: "", headTitle: "تقرير متابعة", reportTitle: "تقرير متابعة المواضيع", preparedBy: "", period: "",
+  org: "هيئة الرقابة النووية والإشعاعية", dept: "", headTitle: "تقرير متابعة", calendar: "both", reportTitle: "تقرير متابعة المواضيع", preparedBy: "", period: "",
   classification: "داخلي", footer: "", logo: "", docNo: "",
   sigPrep: "", sigReview: "", sigApprove: "",
   customColors: false, primary: "#066d39", accent: "#cda053",
@@ -2500,7 +2648,7 @@ document.addEventListener("keydown", e => { if (e.key === "Escape" && $("#rpOver
 /* =====================================================================
    Branding settings dialog
    ===================================================================== */
-const SETTING_KEYS = ["org", "dept", "headTitle", "reportTitle", "period", "preparedBy", "classification", "footer", "docNo", "sigPrep", "sigReview", "sigApprove", "primary", "accent"];
+const SETTING_KEYS = ["org", "dept", "headTitle", "calendar", "reportTitle", "period", "preparedBy", "classification", "footer", "docNo", "sigPrep", "sigReview", "sigApprove", "primary", "accent"];
 let pendingLogo = "";
 
 function openSettingsDialog() {
@@ -2620,7 +2768,7 @@ $("#btnReportSettings").onclick = openSettingsDialog;
     const headTitle = S.headTitle ? `<div class="lh-title">${esc(S.headTitle)}</div>` : "<div></div>";
     const head = first
       ? `<div class="lh">${ctx.logoWide ? `<div class="r wide"><img src="${ctx.logoWide}" alt="${org}">${S.dept ? `<span>${esc(S.dept)}</span>` : ""}</div>${headTitle}` : `<div class="r"><b>${org}</b><span>${esc(S.dept)}</span></div><div class="mid">${logo}${headTitle}</div>`}
-          <div class="l"><span>الرقم:</span><b><bdi>${esc(S.docNo || "—")}</bdi></b><span>التاريخ:</span><b><bdi>${fmt(todayISO())}</bdi></b>
+          <div class="l"><span>الرقم:</span><b><bdi>${esc(S.docNo || "—")}</bdi></b><span>التاريخ:</span><b><bdi>${fmtH(todayISO())}</bdi></b>
           <span>المرفقات:</span><b>${page.kind === "topic" ? "—" : "بيان تفصيلي"}</b></div></div><div class="dbl"></div>`
       : `<div class="lh-mini">${ctx.logo ? `<img src="${ctx.logo}" alt="">` : ""}<b>${org}</b><span>${esc(ctx.title)}</span><span><bdi>${fmt(todayISO())}</bdi></span></div><div class="dbl thin"></div>`;
     return `<div class="frame"></div>${head}<div class="pg-body"></div>
@@ -2675,7 +2823,7 @@ $("#btnReportSettings").onclick = openSettingsDialog;
       <th style="width:26px">م</th><th style="width:54px">المرجع</th><th>الموضوع</th><th style="width:100px">المسؤول</th><th style="width:86px">الحالة</th><th style="width:72px">الاستحقاق</th>
       ${B.map(b => `<th class="m">${b.label}</th>`).join("")}</tr></thead><tbody class="split-body">
       ${topics.map((t, i) => `<tr><td class="num">${i + 1}</td><td class="num">${esc(t.ref)}</td><td>${esc(t.title)}</td><td>${esc(t.owner) || "—"}</td>
-        <td>${stIcon(t)}</td><td class="num ${isOverdue(t) ? "red" : ""}">${fmt(t.dueDate)}</td>${cells(t)}</tr>`).join("")}
+        <td>${stIcon(t)}</td><td class="num ${isOverdue(t) ? "red" : ""}">${fmtH(t.dueDate)}</td>${cells(t)}</tr>`).join("")}
       </tbody></table>`));
 
     // latest updates
@@ -2684,7 +2832,7 @@ $("#btnReportSettings").onclick = openSettingsDialog;
     if (latest.length) {
       out.push(sec(n++, "أبرز المستجدات"));
       out.push(h(`<table class="f-tbl" data-split data-cont="أبرز المستجدات"><thead class="split-head"><tr><th style="width:26px">م</th><th style="width:82px">التاريخ</th><th style="width:54px">المرجع</th><th style="width:120px">النوع / الأداة</th><th>التفاصيل</th></tr></thead>
-        <tbody class="split-body">${latest.map(({ t, e }, i) => `<tr><td class="num">${i + 1}</td><td class="num">${fmt(e.date)}</td><td class="num">${esc(t.ref)}</td><td>${evLabel(e)}</td>
+        <tbody class="split-body">${latest.map(({ t, e }, i) => `<tr><td class="num">${i + 1}</td><td class="num">${fmtH(e.date)}</td><td class="num">${esc(t.ref)}</td><td>${evLabel(e)}</td>
         <td>${esc(clip(e.text, 140))} <span class="mut">– ${esc(t.title)}</span></td></tr>`).join("")}</tbody></table>`));
     }
 
@@ -2700,9 +2848,9 @@ $("#btnReportSettings").onclick = openSettingsDialog;
   /* ---------- numbered milestone strip with collision-free labels ---------- */
   function strip(t) {
     const evs = sortedEvents(t), today = todayISO();
-    const items = evs.map((e, i) => ({ d: e.date, n: i + 1, l1: fmt(e.date), l2: e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : evTypeAr(e), kind: e.type === "close" ? "end" : "ev" }));
-    if (t.dueDate) items.push({ d: t.dueDate, l1: fmt(t.dueDate), l2: "الاستحقاق", kind: "due" });
-    if (t.status !== "closed") items.push({ d: today, l1: fmt(today), l2: "تاريخ التقرير", kind: "now" });
+    const items = evs.map((e, i) => ({ d: e.date, n: i + 1, l1: fmtH(e.date), l2: e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : evTypeAr(e), kind: e.type === "close" ? "end" : "ev" }));
+    if (t.dueDate) items.push({ d: t.dueDate, l1: fmtH(t.dueDate), l2: "الاستحقاق", kind: "due" });
+    if (t.status !== "closed") items.push({ d: today, l1: fmtH(today), l2: "تاريخ التقرير", kind: "now" });
     const sc = timeScale(items.map(i => i.d), 0.01);
     const W = 880, LW = 104, GAPPX = 24;
     // keep event markers at least GAPPX apart (dates may be close together)
@@ -2739,15 +2887,15 @@ $("#btnReportSettings").onclick = openSettingsDialog;
     const late = lateDays(t);
     out.push(h(`<div class="f-info">
       <div><span>الجهة ذات العلاقة:</span>${esc(t.party) || "—"}</div><div><span>المسؤول:</span>${esc(t.owner) || "—"}</div><div><span>الأولوية:</span>${PRIORITY[t.priority]}</div><div><span>الحالة:</span>${STATUS[t.status].ar}</div>
-      <div><span>تاريخ الفتح:</span>${fmt(t.openDate)}</div><div><span>تاريخ الاستحقاق:</span>${fmt(t.dueDate)}</div>
-      <div><span>${t.status === "closed" ? "تاريخ الإقفال:" : "مدة المتابعة:"}</span>${t.status === "closed" ? fmt(t.closeDate) : dur(ageDays(t))}</div>
+      <div><span>تاريخ الفتح:</span>${fmtH(t.openDate)}</div><div><span>تاريخ الاستحقاق:</span>${fmtH(t.dueDate)}</div>
+      <div><span>${t.status === "closed" ? "تاريخ الإقفال:" : "مدة المتابعة:"}</span>${t.status === "closed" ? fmtH(t.closeDate) : dur(ageDays(t))}</div>
       <div><span>${t.status === "closed" ? "مدة المعالجة:" : "التأخير:"}</span>${t.status === "closed" ? dur(ageDays(t)) : late ? `<b class="red">${dur(late)}</b>` : "لا يوجد"}</div>
       ${t.description ? `<div class="wide"><span>الخلفية:</span>${esc(t.description)}</div>` : ""}</div>`));
     out.push(sec(n++, "المسار الزمني"));
     out.push(strip(t));
     out.push(sec(n++, "سجل الإجراءات"));
     out.push(h(`<table class="f-tbl log" data-split data-cont="سجل الإجراءات – ${esc(t.ref)}"><thead class="split-head"><tr><th style="width:26px">م</th><th style="width:76px">التاريخ</th><th style="width:56px">النوع</th><th style="width:78px">الأداة</th><th style="width:88px">رقم الخطاب / المحضر / القرار</th><th>التفاصيل</th><th style="width:100px">المنفذ</th><th style="width:100px">المستلم</th><th style="width:56px">الفاصل</th></tr></thead>
-      <tbody class="split-body">${evs.map((e, i) => `<tr><td class="num">${i + 1}</td><td class="num">${fmt(e.date)}</td><td>${evTypeAr(e)}</td><td>${e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : "—"}</td><td class="num"><bdi>${esc(e.docRef) || "—"}</bdi></td><td class="pre">${esc(e.text)}</td><td>${esc(e.by) || "—"}</td><td>${esc(e.to) || "—"}</td>
+      <tbody class="split-body">${evs.map((e, i) => `<tr><td class="num">${i + 1}</td><td class="num">${fmtH(e.date)}</td><td>${evTypeAr(e)}</td><td>${e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : "—"}</td><td class="num"><bdi>${esc(e.docRef) || "—"}</bdi></td><td class="pre">${esc(e.text)}</td><td>${esc(e.by) || "—"}</td><td>${esc(e.to) || "—"}</td>
         <td class="num">${i ? dur(daysBetween(evs[i - 1].date, e.date)) : "—"}</td></tr>`).join("")}</tbody></table>`));
     out.push(h(`<div class="f-note"><b>${t.status === "closed" ? "نتيجة الإقفال" : "الوضع الحالي"}: </b>${topicHeadline(t)}.</div>`));
     const nx = lines(t.nextSteps), rk = lines(t.risks);
@@ -2856,7 +3004,7 @@ $("#btnReportSettings").onclick = openSettingsDialog;
       <span class="axis" style="right:${100 / PER / 2}%;left:${(PER - chunk.length) / PER * 100 + 100 / PER / 2}%"></span>
       ${chunk.map((e, j) => {
         const i = from + j, now = e.type === "now", nx = all[i + 1];
-        return `<div class="st ${now ? "now" : ""}"><div class="d">${fmtShort(e.date)}<small>${e.date.slice(0, 4)}</small></div>
+        return `<div class="st ${now ? "now" : ""}"><div class="d">${fmtShort(e.date)}<small>${yearOf(e.date)}</small></div>
           <span class="dot"></span>${nx && j < chunk.length - 1 ? `<span class="gap">${dur(daysBetween(e.date, nx.date))}</span>` : ""}
           <div class="k">${now ? "الوضع الحالي" : evLabel(e)}</div><p>${esc(clip(e.text, now ? 140 : 190))}</p>${parties(e) ? `<div class="by">${parties(e)}</div>` : ""}</div>`;
       }).join("")}</div>`);
@@ -2871,13 +3019,13 @@ $("#btnReportSettings").onclick = openSettingsDialog;
     const fillW = span ? Math.min(100, 100 / Math.max(1, used / 100)) : 100;
     const meter = span ? `<div class="meter"><div class="m"><span>الوقت المستهلك من المهلة</span><b class="${used > 100 ? "red" : ""}">${used}%</b></div>
       <div class="t"><span class="f" style="width:${used > 100 ? fillW : used}%"></span>${used > 100 ? `<span class="o" style="right:${fillW}%;left:0"></span>` : ""}</div>
-      <div class="lb"><span>${fmt(t.openDate)}</span><span>الاستحقاق ${fmt(t.dueDate)}</span></div></div>` : "";
+      <div class="lb"><span>${fmtH(t.openDate)}</span><span>الاستحقاق ${fmtH(t.dueDate)}</span></div></div>` : "";
     out.push(h(`<div class="c-tp">
       <div class="c-fact">${h3("بطاقة الموضوع")}<dl>
         <dt>المرجع</dt><dd>${esc(t.ref)}</dd><dt>التصنيف</dt><dd>${esc(t.category) || "—"}</dd><dt>الجهة</dt><dd>${esc(t.party) || "—"}</dd>
         <dt>المسؤول</dt><dd>${esc(t.owner) || "—"}</dd><dt>الأولوية</dt><dd>${PRIORITY[t.priority]}</dd><dt>الحالة</dt><dd>${STATUS[t.status].ar}</dd>
-        <dt>تاريخ الفتح</dt><dd>${fmt(t.openDate)}</dd><dt>الاستحقاق</dt><dd class="${isOverdue(t) ? "red" : ""}">${fmt(t.dueDate)}</dd>
-        ${t.status === "closed" ? `<dt>الإقفال</dt><dd>${fmt(t.closeDate)}</dd>` : `<dt>آخر إجراء</dt><dd>قبل ${dur(sinceLast(t))}</dd>`}
+        <dt>تاريخ الفتح</dt><dd>${fmtH(t.openDate)}</dd><dt>الاستحقاق</dt><dd class="${isOverdue(t) ? "red" : ""}">${fmtH(t.dueDate)}</dd>
+        ${t.status === "closed" ? `<dt>الإقفال</dt><dd>${fmtH(t.closeDate)}</dd>` : `<dt>آخر إجراء</dt><dd>قبل ${dur(sinceLast(t))}</dd>`}
         <dt>عدد الإجراءات</dt><dd>${realEvents(t).length}</dd></dl>${meter}</div>
       <div class="c-right">${h3("المسار الزمني للإجراءات", "الأيام بين كل إجراءين على المحور")}
         ${t.description ? `<p class="c-desc">${esc(clip(t.description, 300))}</p>` : ""}
@@ -3024,7 +3172,7 @@ $("#btnReportSettings").onclick = openSettingsDialog;
           const now = e.type === "now", c = EC[e.type] || SC.open, nx = evs[from + j + 1];
           return `<div class="st" style="--c:${c}"><div class="n ${now ? "now" : ""}">${icon(now ? "clock" : evIcon(e), 18, now ? RED : "#fff")}</div>
             ${nx && j < chunk.length - 1 ? `<span class="gp">${dur(daysBetween(e.date, nx.date))}</span>` : ""}
-            <div class="c"><div class="d">${fmtShort(e.date)} <small>${e.date.slice(0, 4)}</small></div><div class="ty">${now ? "الوضع الحالي" : evLabel(e)}</div>
+            <div class="c"><div class="d">${fmtShort(e.date)} <small>${yearOf(e.date)}</small></div><div class="ty">${now ? "الوضع الحالي" : evLabel(e)}</div>
             <p>${esc(clip(e.text, now ? 120 : 170))}</p>${parties(e) ? `<div class="by">${parties(e)}</div>` : ""}</div></div>`;
         }).join("")}</div></div>`);
   }
@@ -3071,10 +3219,10 @@ $("#btnReportSettings").onclick = openSettingsDialog;
     out.push(h(`<div class="m-row2 ${ex.length > 1 ? "x" + (ex.length + 1) : ""}">
       <div class="card"><h3>بيانات الموضوع</h3><div class="facts ${narrow ? "narrow" : ""}">
         <div><span>الجهة ذات العلاقة</span><b>${esc(t.party) || "—"}</b></div><div><span>المسؤول</span><b>${esc(t.owner) || "—"}</b></div>
-        <div><span>تاريخ الفتح</span><b>${fmt(t.openDate)}</b></div><div><span>تاريخ الاستحقاق</span><b class="${isOverdue(t) ? "red" : ""}">${fmt(t.dueDate)}</b></div>
+        <div><span>تاريخ الفتح</span><b>${fmtH(t.openDate)}</b></div><div><span>تاريخ الاستحقاق</span><b class="${isOverdue(t) ? "red" : ""}">${fmtH(t.dueDate)}</b></div>
         <div><span>عدد الإجراءات</span><b>${realEvents(t).length}</b></div><div><span>متوسط الفاصل</span><b>${gaps.length ? dur(Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length)) : "—"}</b></div>
         ${narrow ? "" : `<div><span>أطول فاصل</span><b>${gaps.length ? dur(Math.max(...gaps)) : "—"}</b></div>`}
-        <div><span>${t.status === "closed" ? "تاريخ الإقفال" : "آخر إجراء"}</span><b>${t.status === "closed" ? fmt(t.closeDate) : "قبل " + dur(sinceLast(t))}</b></div>
+        <div><span>${t.status === "closed" ? "تاريخ الإقفال" : "آخر إجراء"}</span><b>${t.status === "closed" ? fmtH(t.closeDate) : "قبل " + dur(sinceLast(t))}</b></div>
       </div></div>${ex.join("")}</div>`));
     return out;
   }
@@ -3126,27 +3274,37 @@ $("#btnReportSettings").onclick = openSettingsDialog;
   const myFileName = () => `data-${safe(getUser())}-${device()}.json`;
 
   /* ---------- change stamping (called from save()) ---------- */
-  const TOPIC_SKIP = new Set(["events", "uAt", "uBy", "fAt", "cAt"]);
+  const TOPIC_SKIP = new Set(["events", "uAt", "uBy", "fAt", "cAt", "cBy", "log", "evSeq"]);
   const topicFields = t => Object.keys(t).filter(k => !TOPIC_SKIP.has(k));
   const evKey = e => { const { uAt, uBy, ...r } = e; return JSON.stringify(r); };
   const setKey = s => { const { uAt, uBy, ...r } = s || {}; return JSON.stringify(r); };
 
   function snapshot(d) {
-    const s = { t: new Map(), e: new Map(), set: setKey(d.settings) };
+    const s = { t: new Map(), e: new Map(), eT: new Map(), info: new Map(), set: setKey(d.settings) };
     (d.topics || []).forEach(t => {
       const f = {};
       topicFields(t).forEach(k => f[k] = JSON.stringify(t[k]));
       s.t.set(t.id, f);
-      (t.events || []).forEach(e => s.e.set(e.id, evKey(e)));
+      s.info.set(t.id, { ref: t.ref, title: t.title });
+      (t.events || []).forEach(e => { s.e.set(e.id, evKey(e)); s.eT.set(e.id, t.id); });
     });
     return s;
   }
+
+  /* ---------- audit log: who changed what, when (shown in the app only) ---------- */
+  const LOG_TOPIC = ["title", "description", "category", "party", "owner", "priority", "status", "openDate", "dueDate", "closeDate", "closeNote", "nextSteps", "risks", "decision"];
+  const LOG_EVENT = ["date", "type", "tool", "docRef", "text", "by", "to"];
+  const uidL = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const cut = v => { v = v == null ? "" : String(v); return v.length > 400 ? v.slice(0, 400) + "…" : v; };
+  const evSummary = e => ({ d: e.date, ty: e.type, x: cut(e.text) });
+  function addLog(t, entry) { (t.log = t.log || []).push({ id: uidL(), ...entry }); }
 
   function beforeSave(d) {
     const s = state.snap || snapshot({ topics: [], settings: {} });
     const ts = Date.now(), u = getUser();
     d.tomb = d.tomb || { t: {}, e: {} };
     const seenT = new Set(), seenE = new Set();
+    const byId = new Map(d.topics.map(t => [t.id, t]));
     d.topics.forEach(t => {
       seenT.add(t.id);
       const old = s.t.get(t.id);
@@ -3155,17 +3313,43 @@ $("#btnReportSettings").onclick = openSettingsDialog;
       t.fAt = t.fAt || {};
       let changed = false;
       topicFields(t).forEach(k => {
-        if (!old || old[k] !== JSON.stringify(t[k])) { t.fAt[k] = ts; changed = true; }
+        if (!old || old[k] !== JSON.stringify(t[k])) {
+          t.fAt[k] = ts; changed = true;
+          if (old && LOG_TOPIC.includes(k)) {
+            const from = old[k] === undefined ? "" : JSON.parse(old[k]);
+            if ((from ?? "") !== (t[k] ?? "")) addLog(t, { at: ts, by: u, a: "edit", f: k, from: cut(from), to: cut(t[k]) });
+          }
+        }
       });
+      if (!old) addLog(t, { at: ts, by: u, a: "create" });
       if (changed) { t.uAt = ts; t.uBy = u; }
       (t.events || []).forEach(e => {
         seenE.add(e.id);
+        const was = s.e.get(e.id);
         if (!s.e.has(e.id) && !e.cBy) { e.cBy = u; e.cAt = ts; }
-        if (s.e.get(e.id) !== evKey(e)) { e.uAt = ts; e.uBy = u; }
+        if (was !== evKey(e)) {
+          e.uAt = ts; e.uBy = u;
+          if (!old || e.type === "create") return;                 // part of creating the topic
+          if (was === undefined) { addLog(t, { at: ts, by: u, a: "ev_add", ev: e.id, ...evSummary(e) }); return; }
+          const prev = JSON.parse(was);
+          LOG_EVENT.forEach(k => {
+            if ((prev[k] ?? "") !== (e[k] ?? "")) addLog(t, { at: ts, by: u, a: "ev_edit", ev: e.id, d: e.date, f: k, from: cut(prev[k]), to: cut(e[k]) });
+          });
+        }
       });
     });
-    s.t.forEach((_, id) => { if (!seenT.has(id)) d.tomb.t[id] = ts; });
-    s.e.forEach((_, id) => { if (!seenE.has(id)) d.tomb.e[id] = ts; });
+    s.e.forEach((key, id) => {
+      if (seenE.has(id)) return;
+      d.tomb.e[id] = ts;
+      const t = byId.get(s.eT.get(id));
+      if (t) { const prev = JSON.parse(key); addLog(t, { at: ts, by: u, a: "ev_del", ev: id, d: prev.date, ty: prev.type, x: cut(prev.text) }); }
+    });
+    s.t.forEach((_, id) => {
+      if (seenT.has(id)) return;
+      d.tomb.t[id] = ts;
+      const inf = s.info.get(id) || {};
+      (d.dellog = d.dellog || []).push({ id: uidL(), at: ts, by: u, tid: id, ref: inf.ref, title: inf.title });
+    });
     d.settings = d.settings || {};
     if (setKey(d.settings) !== s.set) { d.settings.uAt = ts; d.settings.uBy = u; }
     state.snap = snapshot(d);
@@ -3173,6 +3357,7 @@ $("#btnReportSettings").onclick = openSettingsDialog;
 
   /* ---------- merge ---------- */
   const refNum = r => +(String(r || "").match(/(\d+)$/) || [0, 0])[1];
+  const unionById = (x, y) => { const m = new Map(); [...(x || []), ...(y || [])].forEach(e => m.set(e.id, e)); return [...m.values()].sort((p, q) => p.at - q.at); };
 
   function merge(a, b) {
     const tomb = { t: { ...(a.tomb?.t || {}) }, e: { ...(a.tomb?.e || {}) } };
@@ -3195,6 +3380,7 @@ $("#btnReportSettings").onclick = openSettingsDialog;
       const evs = new Map();
       [...cur.events, ...(t.events || [])].forEach(e => { const c = evs.get(e.id); if (!c || (e.uAt || 0) > (c.uAt || 0)) evs.set(e.id, e); });
       out.events = [...evs.values()];
+      out.log = unionById(cur.log, t.log);
       T.set(t.id, out);
     }
     const topics = [...T.values()];
@@ -3218,7 +3404,7 @@ $("#btnReportSettings").onclick = openSettingsDialog;
 
     const sa = a.settings || {}, sb = b.settings || {};
     const settings = (sb.uAt || 0) > (sa.uAt || 0) ? sb : sa;
-    return { seq, topics, settings, tomb };
+    return { seq, topics, settings, tomb, dellog: unionById(a.dellog, b.dellog) };
   }
 
   /* ---------- folder I/O ---------- */
@@ -3252,7 +3438,7 @@ $("#btnReportSettings").onclick = openSettingsDialog;
     if (!state.dir) return;
     const files = await readAll();
     const before = JSON.stringify(db.topics) + JSON.stringify(db.settings);
-    let m = { seq: db.seq, topics: db.topics, settings: db.settings, tomb: db.tomb || { t: {}, e: {} } };
+    let m = { seq: db.seq, topics: db.topics, settings: db.settings, tomb: db.tomb || { t: {}, e: {} }, dellog: db.dellog || [] };
     files.forEach(({ d }) => { m = merge(m, d); });
     migrateTopics(m.topics);
     db = m;
@@ -3260,10 +3446,37 @@ $("#btnReportSettings").onclick = openSettingsDialog;
     try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); } catch (e) { /* ignore */ }
     state.peers = files.filter(f => f.name !== myFileName()).map(f => ({ by: f.d.savedBy || "؟", at: f.d.savedAt || 0 }));
     if (write || !files.some(f => f.name === myFileName())) await writeMine();
+    await autoBackup().catch(err => console.warn("automatic backup failed", err));
     state.lastSync = Date.now();
     state.error = "";
     if (JSON.stringify(db.topics) + JSON.stringify(db.settings) !== before) refreshUI();
     renderStatus();
+  }
+
+  /* ---------- automatic daily backup inside the shared folder ---------- */
+  const BACKUP_DIR = "backups", BACKUP_KEEP = 30;
+  const BACKUP_RE = /^backup-\d{4}-\d{2}-\d{2}\.json$/;
+  async function autoBackup() {
+    const day = todayISO();
+    if (state.backupDay === day || !db.topics.length) return;
+    const dir = await state.dir.getDirectoryHandle(BACKUP_DIR, { create: true });
+    const name = `backup-${day}.json`;
+    let exists = true;
+    try { await dir.getFileHandle(name); } catch (e) { exists = false; }
+    if (!exists) {
+      const fh = await dir.getFileHandle(name, { create: true });
+      const w = await fh.createWritable();
+      await w.write(JSON.stringify({ format: FORMAT, backup: day, savedBy: getUser(), savedAt: Date.now(), ...db }, null, 1));
+      await w.close();
+    }
+    // keep the newest BACKUP_KEEP daily copies
+    const names = [];
+    for await (const [n, h] of dir.entries()) if (h.kind === "file" && BACKUP_RE.test(n)) names.push(n);
+    names.sort().reverse();
+    for (const n of names.slice(BACKUP_KEEP)) await dir.removeEntry(n).catch(() => {});
+    state.backupDay = day;
+    state.backups = Math.min(names.length, BACKUP_KEEP);
+    markBackup();
   }
 
   async function changedOnDisk() {
@@ -3350,11 +3563,13 @@ $("#btnReportSettings").onclick = openSettingsDialog;
     if (st) {
       st.innerHTML = state.dir
         ? `<b>متصل بالمجلد:</b> ${esc(state.dir.name || "")}<br><b>ملفك:</b> ${esc(myFileName())}<br>
-           <b>آخر مزامنة:</b> ${state.lastSync ? hm(state.lastSync) : "—"}${state.error ? `<br><span style="color:var(--danger)">${esc(state.error)}</span>` : ""}
+           <b>آخر مزامنة:</b> ${state.lastSync ? hm(state.lastSync) : "—"}
+           ${state.backupDay ? `<br><b>النسخ الاحتياطي التلقائي:</b> يومياً في المجلد الفرعي «${BACKUP_DIR}» (آخر ${state.backups || 1} نسخة محفوظة، والحد ${BACKUP_KEEP})` : ""}${state.error ? `<br><span style="color:var(--danger)">${esc(state.error)}</span>` : ""}
            ${state.peers.length ? `<br><b>مستخدمون آخرون في المجلد:</b> ${state.peers.map(p => `${esc(p.by)} (آخر حفظ ${p.at ? ymd(p.at) + " " + hm(p.at) : "—"})`).join("، ")}` : ""}`
         : state.pending ? "المجلد المشترك محفوظ لكن يحتاج إذن الوصول من جديد – اضغط «اختيار المجلد المشترك» أو شارة المزامنة في الأعلى."
         : "البيانات محفوظة في هذا المتصفح فقط.";
     }
+    if (typeof renderBackupDue === "function") renderBackupDue();
     const dc = document.getElementById("btnShareOff"); if (dc) dc.classList.toggle("hidden", !state.dir);
     const sn = document.getElementById("btnShareNow"); if (sn) sn.classList.toggle("hidden", !state.dir);
   }

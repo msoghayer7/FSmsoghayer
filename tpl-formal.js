@@ -21,7 +21,7 @@
     const headTitle = S.headTitle ? `<div class="lh-title">${esc(S.headTitle)}</div>` : "<div></div>";
     const head = first
       ? `<div class="lh">${ctx.logoWide ? `<div class="r wide"><img src="${ctx.logoWide}" alt="${org}">${S.dept ? `<span>${esc(S.dept)}</span>` : ""}</div>${headTitle}` : `<div class="r"><b>${org}</b><span>${esc(S.dept)}</span></div><div class="mid">${logo}${headTitle}</div>`}
-          <div class="l"><span>الرقم:</span><b><bdi>${esc(S.docNo || "—")}</bdi></b><span>التاريخ:</span><b><bdi>${fmt(todayISO())}</bdi></b>
+          <div class="l"><span>الرقم:</span><b><bdi>${esc(S.docNo || "—")}</bdi></b><span>التاريخ:</span><b><bdi>${fmtH(todayISO())}</bdi></b>
           <span>المرفقات:</span><b>${page.kind === "topic" ? "—" : "بيان تفصيلي"}</b></div></div><div class="dbl"></div>`
       : `<div class="lh-mini">${ctx.logo ? `<img src="${ctx.logo}" alt="">` : ""}<b>${org}</b><span>${esc(ctx.title)}</span><span><bdi>${fmt(todayISO())}</bdi></span></div><div class="dbl thin"></div>`;
     return `<div class="frame"></div>${head}<div class="pg-body"></div>
@@ -76,7 +76,7 @@
       <th style="width:26px">م</th><th style="width:54px">المرجع</th><th>الموضوع</th><th style="width:100px">المسؤول</th><th style="width:86px">الحالة</th><th style="width:72px">الاستحقاق</th>
       ${B.map(b => `<th class="m">${b.label}</th>`).join("")}</tr></thead><tbody class="split-body">
       ${topics.map((t, i) => `<tr><td class="num">${i + 1}</td><td class="num">${esc(t.ref)}</td><td>${esc(t.title)}</td><td>${esc(t.owner) || "—"}</td>
-        <td>${stIcon(t)}</td><td class="num ${isOverdue(t) ? "red" : ""}">${fmt(t.dueDate)}</td>${cells(t)}</tr>`).join("")}
+        <td>${stIcon(t)}</td><td class="num ${isOverdue(t) ? "red" : ""}">${fmtH(t.dueDate)}</td>${cells(t)}</tr>`).join("")}
       </tbody></table>`));
 
     // latest updates
@@ -85,7 +85,7 @@
     if (latest.length) {
       out.push(sec(n++, "أبرز المستجدات"));
       out.push(h(`<table class="f-tbl" data-split data-cont="أبرز المستجدات"><thead class="split-head"><tr><th style="width:26px">م</th><th style="width:82px">التاريخ</th><th style="width:54px">المرجع</th><th style="width:120px">النوع / الأداة</th><th>التفاصيل</th></tr></thead>
-        <tbody class="split-body">${latest.map(({ t, e }, i) => `<tr><td class="num">${i + 1}</td><td class="num">${fmt(e.date)}</td><td class="num">${esc(t.ref)}</td><td>${evLabel(e)}</td>
+        <tbody class="split-body">${latest.map(({ t, e }, i) => `<tr><td class="num">${i + 1}</td><td class="num">${fmtH(e.date)}</td><td class="num">${esc(t.ref)}</td><td>${evLabel(e)}</td>
         <td>${esc(clip(e.text, 140))} <span class="mut">– ${esc(t.title)}</span></td></tr>`).join("")}</tbody></table>`));
     }
 
@@ -101,9 +101,9 @@
   /* ---------- numbered milestone strip with collision-free labels ---------- */
   function strip(t) {
     const evs = sortedEvents(t), today = todayISO();
-    const items = evs.map((e, i) => ({ d: e.date, n: i + 1, l1: fmt(e.date), l2: e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : evTypeAr(e), kind: e.type === "close" ? "end" : "ev" }));
-    if (t.dueDate) items.push({ d: t.dueDate, l1: fmt(t.dueDate), l2: "الاستحقاق", kind: "due" });
-    if (t.status !== "closed") items.push({ d: today, l1: fmt(today), l2: "تاريخ التقرير", kind: "now" });
+    const items = evs.map((e, i) => ({ d: e.date, n: i + 1, l1: fmtH(e.date), l2: e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : evTypeAr(e), kind: e.type === "close" ? "end" : "ev" }));
+    if (t.dueDate) items.push({ d: t.dueDate, l1: fmtH(t.dueDate), l2: "الاستحقاق", kind: "due" });
+    if (t.status !== "closed") items.push({ d: today, l1: fmtH(today), l2: "تاريخ التقرير", kind: "now" });
     const sc = timeScale(items.map(i => i.d), 0.01);
     const W = 880, LW = 104, GAPPX = 24;
     // keep event markers at least GAPPX apart (dates may be close together)
@@ -140,15 +140,15 @@
     const late = lateDays(t);
     out.push(h(`<div class="f-info">
       <div><span>الجهة ذات العلاقة:</span>${esc(t.party) || "—"}</div><div><span>المسؤول:</span>${esc(t.owner) || "—"}</div><div><span>الأولوية:</span>${PRIORITY[t.priority]}</div><div><span>الحالة:</span>${STATUS[t.status].ar}</div>
-      <div><span>تاريخ الفتح:</span>${fmt(t.openDate)}</div><div><span>تاريخ الاستحقاق:</span>${fmt(t.dueDate)}</div>
-      <div><span>${t.status === "closed" ? "تاريخ الإقفال:" : "مدة المتابعة:"}</span>${t.status === "closed" ? fmt(t.closeDate) : dur(ageDays(t))}</div>
+      <div><span>تاريخ الفتح:</span>${fmtH(t.openDate)}</div><div><span>تاريخ الاستحقاق:</span>${fmtH(t.dueDate)}</div>
+      <div><span>${t.status === "closed" ? "تاريخ الإقفال:" : "مدة المتابعة:"}</span>${t.status === "closed" ? fmtH(t.closeDate) : dur(ageDays(t))}</div>
       <div><span>${t.status === "closed" ? "مدة المعالجة:" : "التأخير:"}</span>${t.status === "closed" ? dur(ageDays(t)) : late ? `<b class="red">${dur(late)}</b>` : "لا يوجد"}</div>
       ${t.description ? `<div class="wide"><span>الخلفية:</span>${esc(t.description)}</div>` : ""}</div>`));
     out.push(sec(n++, "المسار الزمني"));
     out.push(strip(t));
     out.push(sec(n++, "سجل الإجراءات"));
     out.push(h(`<table class="f-tbl log" data-split data-cont="سجل الإجراءات – ${esc(t.ref)}"><thead class="split-head"><tr><th style="width:26px">م</th><th style="width:76px">التاريخ</th><th style="width:56px">النوع</th><th style="width:78px">الأداة</th><th style="width:88px">رقم الخطاب / المحضر / القرار</th><th>التفاصيل</th><th style="width:100px">المنفذ</th><th style="width:100px">المستلم</th><th style="width:56px">الفاصل</th></tr></thead>
-      <tbody class="split-body">${evs.map((e, i) => `<tr><td class="num">${i + 1}</td><td class="num">${fmt(e.date)}</td><td>${evTypeAr(e)}</td><td>${e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : "—"}</td><td class="num"><bdi>${esc(e.docRef) || "—"}</bdi></td><td class="pre">${esc(e.text)}</td><td>${esc(e.by) || "—"}</td><td>${esc(e.to) || "—"}</td>
+      <tbody class="split-body">${evs.map((e, i) => `<tr><td class="num">${i + 1}</td><td class="num">${fmtH(e.date)}</td><td>${evTypeAr(e)}</td><td>${e.tool && TOOLS[e.tool] ? TOOLS[e.tool].ar : "—"}</td><td class="num"><bdi>${esc(e.docRef) || "—"}</bdi></td><td class="pre">${esc(e.text)}</td><td>${esc(e.by) || "—"}</td><td>${esc(e.to) || "—"}</td>
         <td class="num">${i ? dur(daysBetween(evs[i - 1].date, e.date)) : "—"}</td></tr>`).join("")}</tbody></table>`));
     out.push(h(`<div class="f-note"><b>${t.status === "closed" ? "نتيجة الإقفال" : "الوضع الحالي"}: </b>${topicHeadline(t)}.</div>`));
     const nx = lines(t.nextSteps), rk = lines(t.risks);

@@ -19,8 +19,19 @@ const DAY_MS = 86400000;
 const PG_W = 1123, PG_H = 793;   // A4 landscape at 96dpi
 
 /* ---------------- text helpers ---------------- */
-const fmtLong = iso => { if (!iso) return "—"; const [y, m, d] = iso.split("-").map(Number); return `${d} ${AR_MONTHS[m - 1]} ${y}`; };
-const fmtShort = iso => { if (!iso) return "—"; const [, m, d] = iso.split("-").map(Number); return `${d} ${AR_MONTHS[m - 1]}`; };
+const fmtLong = iso => {
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("-").map(Number), g = `${d} ${AR_MONTHS[m - 1]} ${y}`, mode = calMode();
+  if (mode === "greg" || !HIJRI_TXT) return g;
+  const p = dateParts(HIJRI_TXT, iso), hj = `${p.day} ${p.month} ${p.year}هـ`;
+  return mode === "hijri" ? hj : `${g}م (${hj})`;
+};
+const fmtShort = iso => {
+  if (!iso) return "—";
+  if (calMode() === "hijri" && HIJRI_TXT) { const p = dateParts(HIJRI_TXT, iso); return `${p.day} ${p.month}`; }
+  const [, m, d] = iso.split("-").map(Number);
+  return `${d} ${AR_MONTHS[m - 1]}`;
+};
 const clip = (s, n) => { s = String(s ?? "").replace(/\s+/g, " ").trim(); return s.length > n ? s.slice(0, n).trim() + "…" : s; };
 const lines = s => String(s ?? "").split(/\n+/).map(x => x.replace(/^[\s\-•*·]+/, "").trim()).filter(Boolean);
 
@@ -295,7 +306,7 @@ class Pager {
    Settings
    ===================================================================== */
 const DEFAULT_SETTINGS = {
-  org: "هيئة الرقابة النووية والإشعاعية", dept: "", headTitle: "تقرير متابعة", reportTitle: "تقرير متابعة المواضيع", preparedBy: "", period: "",
+  org: "هيئة الرقابة النووية والإشعاعية", dept: "", headTitle: "تقرير متابعة", calendar: "both", reportTitle: "تقرير متابعة المواضيع", preparedBy: "", period: "",
   classification: "داخلي", footer: "", logo: "", docNo: "",
   sigPrep: "", sigReview: "", sigApprove: "",
   customColors: false, primary: "#066d39", accent: "#cda053",
@@ -462,7 +473,7 @@ document.addEventListener("keydown", e => { if (e.key === "Escape" && $("#rpOver
 /* =====================================================================
    Branding settings dialog
    ===================================================================== */
-const SETTING_KEYS = ["org", "dept", "headTitle", "reportTitle", "period", "preparedBy", "classification", "footer", "docNo", "sigPrep", "sigReview", "sigApprove", "primary", "accent"];
+const SETTING_KEYS = ["org", "dept", "headTitle", "calendar", "reportTitle", "period", "preparedBy", "classification", "footer", "docNo", "sigPrep", "sigReview", "sigApprove", "primary", "accent"];
 let pendingLogo = "";
 
 function openSettingsDialog() {
