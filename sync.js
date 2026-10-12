@@ -60,6 +60,7 @@
       seenT.add(t.id);
       const old = s.t.get(t.id);
       if (!t.cAt) t.cAt = ts;
+      if (!old && !t.cBy) t.cBy = u;
       t.fAt = t.fAt || {};
       let changed = false;
       topicFields(t).forEach(k => {
@@ -68,6 +69,7 @@
       if (changed) { t.uAt = ts; t.uBy = u; }
       (t.events || []).forEach(e => {
         seenE.add(e.id);
+        if (!s.e.has(e.id) && !e.cBy) { e.cBy = u; e.cAt = ts; }
         if (s.e.get(e.id) !== evKey(e)) { e.uAt = ts; e.uBy = u; }
       });
     });

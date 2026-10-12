@@ -143,6 +143,7 @@
   .ev .d { font-weight: 700; font-family: Consolas, monospace; }
   .ev .t { font-size: 12px; font-weight: 600; color: var(--c, var(--brand)); border: 1px solid currentColor; border-radius: 999px; padding: 0 8px; }
   .ev .by { color: var(--muted); font-size: 13px; }
+  .who { font-size: 12px; color: #8a94a6; margin-top: 2px; }
   .ev .tool { font-size: 12px; background: #f1f5f9; border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; }
   .ev .x { white-space: pre-wrap; margin-top: 2px; }
   .ev .gap { color: var(--muted); font-size: 12px; }
@@ -205,7 +206,7 @@
       <button class="btn ghost" id="btnSettings">⚙ هوية التقرير</button>
       <button class="btn ghost" id="btnShare">🔗 المشاركة</button>
       <button class="btn ghost" id="btnBackup">💾 نسخة احتياطية</button>
-      <button class="btn ghost" id="btnRestore">↺ استعادة</button>
+      <button class="btn ghost" id="btnRestore">🔒 استعادة</button>
       <input type="file" id="fileRestore" accept="application/json,.json" class="hidden">
     </div>
   </div>
@@ -308,14 +309,14 @@
 <!-- delete PIN dialog -->
 <dialog id="dlgPin">
   <form id="pinForm" method="dialog" autocomplete="off">
-    <h3>🔒 حذف الموضوع</h3>
+    <h3 id="pinTitle">🔒 حذف الموضوع</h3>
     <p id="pinTopic" style="margin-top:-6px"></p>
-    <div class="field"><label>أدخل الرقم السري للحذف</label>
+    <div class="field"><label>أدخل الرقم السري</label>
       <input type="password" name="pin" inputmode="numeric" autocomplete="off" required></div>
     <p id="pinErr" class="hidden" style="color:var(--danger);margin:0 0 8px">الرقم السري غير صحيح.</p>
     <div class="dlg-actions">
       <button type="button" class="btn" data-close>إلغاء</button>
-      <button class="btn danger" value="ok">حذف نهائي</button>
+      <button class="btn danger" value="ok" id="pinOkBtn">حذف نهائي</button>
     </div>
   </form>
 </dialog>
@@ -700,7 +701,7 @@ function renderList() {
         <span>⏱ ${ageDays(t)} يوم</span>
         <span>📌 ${t.events.length} حدث</span>
       </div>
-      ${le ? `<div class="last"><b>آخر مستجد (${fmt(le.date)} – ${evLabel(le)}):</b> ${esc(le.text.length > 160 ? le.text.slice(0, 160) + "…" : le.text)}</div>` : ""}
+      ${le ? `<div class="last"><b>آخر مستجد (${fmt(le.date)} – ${evLabel(le)}):</b> ${esc(le.text.length > 160 ? le.text.slice(0, 160) + "…" : le.text)}${(le.uBy || le.cBy) ? ` <span class="who" style="display:inline">— ✍ ${esc(le.uBy || le.cBy)}</span>` : ""}</div>` : ""}
     </div>`;
   }).join("");
 }
@@ -713,15 +714,25 @@ function timelineHTML(t, withTools) {
     const gap = prev ? daysBetween(prev.date, e.date) : null;
     const tools = withTools ? `<span class="tools">
         <button title="تعديل" onclick="editEvent('${e.id}')">✎</button>
-        ${e.type !== "create" ? `<button title="حذف" onclick="deleteEvent('${e.id}')">🗑</button>` : ""}</span>` : "";
-    return `<div class="ev" style="--c:${evColor(e)}" ${e.uBy ? `title="سجّله: ${esc(e.uBy)} – ${stampText(e.uAt)}"` : ""}>
+        ${e.type !== "create" ? `<button title="حذف (يتطلب الرقم السري)" onclick="deleteEvent('${e.id}')">🗑</button>` : ""}</span>` : "";
+    return `<div class="ev" style="--c:${evColor(e)}">
       <div class="h"><span class="d">${fmt(e.date)}</span><span class="t">${evTypeAr(e)}</span>
         ${e.tool && TOOLS[e.tool] ? `<span class="tool">${TOOLS[e.tool].emoji} ${TOOLS[e.tool].ar}</span>` : ""}
         ${e.by || e.to ? `<span class="by">${e.by ? "المنفذ: " + esc(e.by) : ""}${e.by && e.to ? " ← " : ""}${e.to ? "المستلم: " + esc(e.to) : ""}</span>` : ""}
         ${gap !== null ? `<span class="gap">(+${gap} يوم)</span>` : ""}${tools}</div>
       <div class="x">${esc(e.text)}</div>
+      ${whoHTML(e)}
     </div>`;
   }).join("");
+}
+
+/* who recorded / last edited an item – shown in the app only, never in reports or Excel */
+function whoHTML(x) {
+  const c = x.cBy, u = x.uBy;
+  if (!c && !u) return "";
+  let s = c ? `✍ سجّله ${esc(c)}${x.cAt ? " · " + stampText(x.cAt) : ""}` : "";
+  if (u && (u !== c || (x.uAt && x.cAt && x.uAt - x.cAt > 60000))) s += `${s ? " — " : "✍ "}آخر تعديل ${esc(u)} · ${stampText(x.uAt)}`;
+  return `<div class="who">${s}</div>`;
 }
 
 const stampText = ms => { if (!ms) return ""; const d = new Date(ms); return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
@@ -743,6 +754,7 @@ function renderDetail() {
       <div><span>تاريخ الاستحقاق</span>${fmt(t.dueDate)}</div>
       <div><span>تاريخ الإقفال</span>${fmt(t.closeDate)}</div>
       <div><span>المدة</span>${ageDays(t)} يوم${closed ? "" : " (حتى اليوم)"}</div>
+      ${t.cBy ? `<div><span>سجّله</span>${esc(t.cBy)}${t.cAt ? " · " + stampText(t.cAt) : ""}</div>` : ""}
       ${t.uBy ? `<div><span>آخر تعديل</span>${esc(t.uBy)} · ${stampText(t.uAt)}</div>` : ""}
     </div>
     ${t.description ? `<div class="desc">${esc(t.description)}</div>` : ""}
@@ -787,12 +799,12 @@ function editEvent(id) {
 }
 
 function deleteEvent(id) {
-  const t = getTopic(ui.current);
-  if (!confirm("حذف هذا الحدث من المخطط الزمني؟")) return;
-  const e = t.events.find(x => x.id === id);
-  t.events = t.events.filter(x => x.id !== id);
-  if (e.type === "close" && t.status === "closed") { t.status = "open"; t.closeDate = ""; t.closeNote = ""; }
-  save(); renderDetail(); toast("تم حذف الحدث");
+  const t = getTopic(ui.current), e = t.events.find(x => x.id === id);
+  requirePin("حذف حدث", `${fmt(e.date)} – ${evLabel(e)}: ${e.text.length > 90 ? e.text.slice(0, 90) + "…" : e.text}`, "حذف الحدث", () => {
+    t.events = t.events.filter(x => x.id !== id);
+    if (e.type === "close" && t.status === "closed") { t.status = "open"; t.closeDate = ""; t.closeNote = ""; }
+    save(); renderDetail(); toast("تم حذف الحدث");
+  });
 }
 
 $("#eventForm").addEventListener("submit", ev => {
@@ -893,11 +905,16 @@ async function pinOk(pin) {
   return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("") === DELETE_PIN_HASH;
 }
 
-function deleteTopic() {
-  const t = getTopic(ui.current), f = $("#pinForm");
+/* asks for the PIN, then runs onOk; used for deleting topics and events and for restoring a backup */
+let pinAction = null;
+function requirePin(title, detail, okLabel, onOk) {
+  const f = $("#pinForm");
   f.reset();
-  $("#pinTopic").textContent = `${t.ref} – ${t.title} (سيُحذف نهائياً مع كل أحداثه)`;
+  $("#pinTitle").textContent = "🔒 " + title;
+  $("#pinTopic").textContent = detail;
+  $("#pinOkBtn").textContent = okLabel;
   $("#pinErr").classList.add("hidden");
+  pinAction = onOk;
   $("#dlgPin").showModal();
   f.pin.focus();
 }
@@ -905,17 +922,23 @@ function deleteTopic() {
 $("#pinForm").addEventListener("submit", async ev => {
   if (ev.submitter?.value !== "ok") return;
   ev.preventDefault();                                 // keep the dialog open until the PIN is checked
-  const t = getTopic(ui.current);
-  if (!t) { $("#dlgPin").close(); return; }
   if (!(await pinOk(ev.target.pin.value))) {
     $("#pinErr").classList.remove("hidden");
     ev.target.pin.select();
     return;
   }
   $("#dlgPin").close();
-  db.topics = db.topics.filter(x => x.id !== t.id);
-  save(); showList(); toast("تم حذف الموضوع");
+  const fn = pinAction; pinAction = null;
+  if (fn) fn();
 });
+
+function deleteTopic() {
+  const t = getTopic(ui.current);
+  requirePin("حذف الموضوع", `${t.ref} – ${t.title} (سيُحذف نهائياً مع كل أحداثه)`, "حذف نهائي", () => {
+    db.topics = db.topics.filter(x => x.id !== t.id);
+    save(); showList(); toast("تم حذف الموضوع");
+  });
+}
 
 /* ================= navigation ================= */
 function showList() {
@@ -953,9 +976,10 @@ $("#fileRestore").onchange = async e => {
   try {
     const d = JSON.parse(await file.text());
     if (!d || !Array.isArray(d.topics)) throw new Error("ملف غير صالح");
-    if (!confirm(`استعادة ${d.topics.length} موضوع؟ سيتم استبدال البيانات الحالية.`)) return;
-    db = { seq: d.seq || d.topics.length, topics: migrateTopics(d.topics), settings: d.settings || db.settings || {}, tomb: db.tomb || { t: {}, e: {} } };
-    save(); showList(); toast("تمت الاستعادة");
+    requirePin("استعادة نسخة احتياطية", `استعادة ${d.topics.length} موضوع من الملف «${file.name}». سيتم استبدال البيانات الحالية${window.Sync && Sync.connected ? " لدى جميع المشاركين في المجلد" : ""}.`, "استعادة", () => {
+      db = { seq: d.seq || d.topics.length, topics: migrateTopics(d.topics), settings: d.settings || db.settings || {}, tomb: db.tomb || { t: {}, e: {} } };
+      save(); showList(); toast("تمت الاستعادة");
+    });
   } catch (err) { alert("تعذرت الاستعادة: " + err.message); }
 };
 
