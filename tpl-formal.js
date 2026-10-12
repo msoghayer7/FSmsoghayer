@@ -37,7 +37,8 @@
     const s = stats(topics), today = todayISO();
     let n = 0;
     const out = [];
-    out.push(onNewPage(h(`<div class="f-ttl"><h1>${esc(ctx.S.reportTitle)}</h1><p>${esc(ctx.period)} · ${topicsN(s.total)} · النطاق: ${esc(scopeLabel())}</p></div>`), { kind: "summary" }));
+    // the letterhead already carries the heading ("تقرير متابعة"): avoid repeating it as a big title
+    out.push(onNewPage(h(`<div class="f-ttl">${ctx.S.headTitle ? "" : `<h1>${esc(ctx.S.reportTitle)}</h1>`}<p>${esc(ctx.period)} · ${topicsN(s.total)} · النطاق: ${esc(scopeLabel())}</p></div>`), { kind: "summary" }));
 
     // narrative
     let p = `بلغ عدد المواضيع المشمولة بهذا التقرير <b>${topicsN(s.total)}</b>`;
