@@ -295,7 +295,7 @@ class Pager {
    Settings
    ===================================================================== */
 const DEFAULT_SETTINGS = {
-  org: "هيئة الرقابة النووية والإشعاعية", dept: "", reportTitle: "تقرير متابعة المواضيع", preparedBy: "", period: "",
+  org: "هيئة الرقابة النووية والإشعاعية", dept: "", headTitle: "تقرير متابعة", reportTitle: "تقرير متابعة المواضيع", preparedBy: "", period: "",
   classification: "داخلي", footer: "", logo: "", docNo: "",
   sigPrep: "", sigReview: "", sigApprove: "",
   customColors: false, primary: "#066d39", accent: "#cda053",
@@ -462,7 +462,7 @@ document.addEventListener("keydown", e => { if (e.key === "Escape" && $("#rpOver
 /* =====================================================================
    Branding settings dialog
    ===================================================================== */
-const SETTING_KEYS = ["org", "dept", "reportTitle", "period", "preparedBy", "classification", "footer", "docNo", "sigPrep", "sigReview", "sigApprove", "primary", "accent"];
+const SETTING_KEYS = ["org", "dept", "headTitle", "reportTitle", "period", "preparedBy", "classification", "footer", "docNo", "sigPrep", "sigReview", "sigApprove", "primary", "accent"];
 let pendingLogo = "";
 
 function openSettingsDialog() {

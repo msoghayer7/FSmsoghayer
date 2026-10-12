@@ -18,8 +18,9 @@
     const S = ctx.S, c = colors(S);
     const logo = ctx.logo ? `<img class="emb" src="${ctx.logo}" alt="">` : emblem(c);
     const org = esc(S.org || "نظام متابعة المواضيع");
+    const headTitle = S.headTitle ? `<div class="lh-title">${esc(S.headTitle)}</div>` : "<div></div>";
     const head = first
-      ? `<div class="lh">${ctx.logoWide ? `<div class="r wide"><img src="${ctx.logoWide}" alt="${org}">${S.dept ? `<span>${esc(S.dept)}</span>` : ""}</div><div></div>` : `<div class="r"><b>${org}</b><span>${esc(S.dept)}</span></div>${logo}`}
+      ? `<div class="lh">${ctx.logoWide ? `<div class="r wide"><img src="${ctx.logoWide}" alt="${org}">${S.dept ? `<span>${esc(S.dept)}</span>` : ""}</div>${headTitle}` : `<div class="r"><b>${org}</b><span>${esc(S.dept)}</span></div><div class="mid">${logo}${headTitle}</div>`}
           <div class="l"><span>الرقم:</span><b><bdi>${esc(S.docNo || "—")}</bdi></b><span>التاريخ:</span><b><bdi>${fmt(todayISO())}</bdi></b>
           <span>المرفقات:</span><b>${page.kind === "topic" ? "—" : "بيان تفصيلي"}</b></div></div><div class="dbl"></div>`
       : `<div class="lh-mini">${ctx.logo ? `<img src="${ctx.logo}" alt="">` : ""}<b>${org}</b><span>${esc(ctx.title)}</span><span><bdi>${fmt(todayISO())}</bdi></span></div><div class="dbl thin"></div>`;
@@ -132,7 +133,7 @@
   function topic(ctx, t) {
     let n = 0;
     const out = [], evs = sortedEvents(t);
-    out.push(onNewPage(h(`<div class="f-ttl"><h1>${esc(t.title)}</h1><p>المرجع ${esc(t.ref)}${t.category ? " · " + esc(t.category) : ""}</p></div>`), { kind: "topic", t }));
+    out.push(onNewPage(h(`<div class="f-ttl"><h1>${esc(t.title)}</h1></div>`), { kind: "topic", t }));
     out.push(sec(n++, "البيانات"));
     const late = lateDays(t);
     out.push(h(`<div class="f-info">

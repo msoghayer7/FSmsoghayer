@@ -77,11 +77,15 @@ window.BRAND = {
 .t-formal { --g: #066d39; --gold: #cda053; --ink: #1a1a1a; --mut: #5f5f5f; --rule: #bfbfbf; --soft: #f5f2ea; padding: 28px 44px 0; }
 .t-formal .frame { position: absolute; inset: 13px; border: 1px solid var(--gold); pointer-events: none; }
 .t-formal .frame::after { content: ""; position: absolute; inset: 3px; border: .5px solid var(--gold); opacity: .6; }
-.t-formal .lh { display: grid; grid-template-columns: 1fr 90px 1fr; align-items: center; padding-bottom: 6px; flex: none; }
+.t-formal .lh { display: grid; grid-template-columns: 1fr 220px 1fr; align-items: center; padding-bottom: 6px; flex: none; }
 .t-formal .lh .r { font-family: Naskh; line-height: 1.55; }
 .t-formal .lh .r b { display: block; font-size: 15px; color: var(--g); font-weight: 700; }
 .t-formal .lh .r span { font-size: 12px; }
 .t-formal .lh { height: 76px; }
+.t-formal .lh-title { font-family: Naskh; font-weight: 700; font-size: 22px; color: var(--g); text-align: center; line-height: 1.3; }
+.t-formal .lh .mid { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.t-formal .lh .mid .emb { width: 46px; height: 46px; }
+.t-formal .lh .mid .lh-title { font-size: 15px; }
 .t-formal .lh .r.wide img { height: 54px; display: block; }
 .t-formal .lh .r.wide span { display: block; color: var(--g); font-weight: 700; font-size: 11px; line-height: 1.3; margin-top: 2px; }
 .t-formal .lh-mini img { height: 22px; align-self: center; }
@@ -573,7 +577,7 @@ window.BRAND = {
 
 <header class="top">
   <div class="wrap">
-    <div class="brandline"><img id="hdrLogo" class="hidden" alt=""><div><h1>نظام متابعة المواضيع <span class="ver" id="appVer">V4</span></h1><span id="hdrOrg"></span> <button type="button" class="sync-pill local" id="syncPill">💻 على هذا الجهاز فقط</button></div></div>
+    <div class="brandline"><img id="hdrLogo" class="hidden" alt=""><div><h1>نظام متابعة المواضيع <span class="ver" id="appVer">V5</span></h1><span id="hdrOrg"></span> <button type="button" class="sync-pill local" id="syncPill">💻 على هذا الجهاز فقط</button></div></div>
     <div class="toolbar">
       <button class="btn primary" style="background:#fff;color:var(--brand)" id="btnNew">＋ موضوع جديد</button>
       <button class="btn ghost" id="btnExcel">⬇ تصدير Excel</button>
@@ -763,6 +767,7 @@ window.BRAND = {
       <div class="field"><label>إعداد</label><input name="preparedBy"></div>
       <div class="field"><label>رقم التقرير (للأسلوب الرسمي)</label><input name="docNo"></div>
     </div>
+    <div class="field"><label>نص الترويسة بين الشعار والرقم (للأسلوب الرسمي)</label><input name="headTitle" placeholder="مثال: تقرير متابعة"></div>
     <div class="row">
       <div class="field"><label>تصنيف السرية</label>
         <select name="classification"><option value="">بدون</option><option>عام</option><option>داخلي</option><option>سري</option><option>سري للغاية</option></select>
@@ -2267,7 +2272,7 @@ class Pager {
    Settings
    ===================================================================== */
 const DEFAULT_SETTINGS = {
-  org: "هيئة الرقابة النووية والإشعاعية", dept: "", reportTitle: "تقرير متابعة المواضيع", preparedBy: "", period: "",
+  org: "هيئة الرقابة النووية والإشعاعية", dept: "", headTitle: "تقرير متابعة", reportTitle: "تقرير متابعة المواضيع", preparedBy: "", period: "",
   classification: "داخلي", footer: "", logo: "", docNo: "",
   sigPrep: "", sigReview: "", sigApprove: "",
   customColors: false, primary: "#066d39", accent: "#cda053",
@@ -2434,7 +2439,7 @@ document.addEventListener("keydown", e => { if (e.key === "Escape" && $("#rpOver
 /* =====================================================================
    Branding settings dialog
    ===================================================================== */
-const SETTING_KEYS = ["org", "dept", "reportTitle", "period", "preparedBy", "classification", "footer", "docNo", "sigPrep", "sigReview", "sigApprove", "primary", "accent"];
+const SETTING_KEYS = ["org", "dept", "headTitle", "reportTitle", "period", "preparedBy", "classification", "footer", "docNo", "sigPrep", "sigReview", "sigApprove", "primary", "accent"];
 let pendingLogo = "";
 
 function openSettingsDialog() {
@@ -2551,8 +2556,9 @@ $("#btnReportSettings").onclick = openSettingsDialog;
     const S = ctx.S, c = colors(S);
     const logo = ctx.logo ? `<img class="emb" src="${ctx.logo}" alt="">` : emblem(c);
     const org = esc(S.org || "نظام متابعة المواضيع");
+    const headTitle = S.headTitle ? `<div class="lh-title">${esc(S.headTitle)}</div>` : "<div></div>";
     const head = first
-      ? `<div class="lh">${ctx.logoWide ? `<div class="r wide"><img src="${ctx.logoWide}" alt="${org}">${S.dept ? `<span>${esc(S.dept)}</span>` : ""}</div><div></div>` : `<div class="r"><b>${org}</b><span>${esc(S.dept)}</span></div>${logo}`}
+      ? `<div class="lh">${ctx.logoWide ? `<div class="r wide"><img src="${ctx.logoWide}" alt="${org}">${S.dept ? `<span>${esc(S.dept)}</span>` : ""}</div>${headTitle}` : `<div class="r"><b>${org}</b><span>${esc(S.dept)}</span></div><div class="mid">${logo}${headTitle}</div>`}
           <div class="l"><span>الرقم:</span><b><bdi>${esc(S.docNo || "—")}</bdi></b><span>التاريخ:</span><b><bdi>${fmt(todayISO())}</bdi></b>
           <span>المرفقات:</span><b>${page.kind === "topic" ? "—" : "بيان تفصيلي"}</b></div></div><div class="dbl"></div>`
       : `<div class="lh-mini">${ctx.logo ? `<img src="${ctx.logo}" alt="">` : ""}<b>${org}</b><span>${esc(ctx.title)}</span><span><bdi>${fmt(todayISO())}</bdi></span></div><div class="dbl thin"></div>`;
@@ -2665,7 +2671,7 @@ $("#btnReportSettings").onclick = openSettingsDialog;
   function topic(ctx, t) {
     let n = 0;
     const out = [], evs = sortedEvents(t);
-    out.push(onNewPage(h(`<div class="f-ttl"><h1>${esc(t.title)}</h1><p>المرجع ${esc(t.ref)}${t.category ? " · " + esc(t.category) : ""}</p></div>`), { kind: "topic", t }));
+    out.push(onNewPage(h(`<div class="f-ttl"><h1>${esc(t.title)}</h1></div>`), { kind: "topic", t }));
     out.push(sec(n++, "البيانات"));
     const late = lateDays(t);
     out.push(h(`<div class="f-info">
