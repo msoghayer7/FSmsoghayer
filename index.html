@@ -305,6 +305,21 @@
   </form>
 </dialog>
 
+<!-- delete PIN dialog -->
+<dialog id="dlgPin">
+  <form id="pinForm" method="dialog" autocomplete="off">
+    <h3>🔒 حذف الموضوع</h3>
+    <p id="pinTopic" style="margin-top:-6px"></p>
+    <div class="field"><label>أدخل الرقم السري للحذف</label>
+      <input type="password" name="pin" inputmode="numeric" autocomplete="off" required></div>
+    <p id="pinErr" class="hidden" style="color:var(--danger);margin:0 0 8px">الرقم السري غير صحيح.</p>
+    <div class="dlg-actions">
+      <button type="button" class="btn" data-close>إلغاء</button>
+      <button class="btn danger" value="ok">حذف نهائي</button>
+    </div>
+  </form>
+</dialog>
+
 <!-- close dialog -->
 <dialog id="dlgClose">
   <form id="closeForm" method="dialog" autocomplete="off">
@@ -737,7 +752,7 @@ function renderDetail() {
                : `<button class="btn success" onclick="openCloseDialog()">✔ إقفال الموضوع</button>`}
       <button class="btn" onclick="openReportDialog([getTopic(ui.current)])">📄 تقرير PDF للموضوع</button>
       <button class="btn" onclick="exportExcel([getTopic(ui.current)])">⬇ Excel للموضوع</button>
-      <button class="btn danger" onclick="deleteTopic()">حذف الموضوع</button>
+      <button class="btn danger" onclick="deleteTopic()">🔒 حذف الموضوع</button>
     </div>`;
   $("#detailTimeline").innerHTML = timelineHTML(t, true);
   $("#eventPanel").classList.toggle("hidden", closed && !ui.editingEvent);
@@ -871,12 +886,36 @@ function reopenTopic() {
   save(); resetEventForm(); renderDetail(); toast("تمت إعادة فتح الموضوع");
 }
 
+/* deleting a topic needs the PIN; only its SHA-256 fingerprint is stored here */
+const DELETE_PIN_HASH = "db4efefb164ef34bacc7bc54a69249f97594f6413a6c3f9e66fe838cda5b063a";
+async function pinOk(pin) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("nrrc-topics:" + pin.trim()));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("") === DELETE_PIN_HASH;
+}
+
 function deleteTopic() {
+  const t = getTopic(ui.current), f = $("#pinForm");
+  f.reset();
+  $("#pinTopic").textContent = `${t.ref} – ${t.title} (سيُحذف نهائياً مع كل أحداثه)`;
+  $("#pinErr").classList.add("hidden");
+  $("#dlgPin").showModal();
+  f.pin.focus();
+}
+
+$("#pinForm").addEventListener("submit", async ev => {
+  if (ev.submitter?.value !== "ok") return;
+  ev.preventDefault();                                 // keep the dialog open until the PIN is checked
   const t = getTopic(ui.current);
-  if (!confirm(`حذف الموضوع ${t.ref} «${t.title}» نهائياً مع كل أحداثه؟`)) return;
+  if (!t) { $("#dlgPin").close(); return; }
+  if (!(await pinOk(ev.target.pin.value))) {
+    $("#pinErr").classList.remove("hidden");
+    ev.target.pin.select();
+    return;
+  }
+  $("#dlgPin").close();
   db.topics = db.topics.filter(x => x.id !== t.id);
   save(); showList(); toast("تم حذف الموضوع");
-}
+});
 
 /* ================= navigation ================= */
 function showList() {
