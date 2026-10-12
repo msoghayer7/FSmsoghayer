@@ -87,7 +87,7 @@
 .f-tbl .num { font-variant-numeric: tabular-nums; text-align: center; white-space: nowrap; }
 .f-tbl.log td { vertical-align: top; }
 .f-tbl.log td:nth-child(3), .f-tbl.log td:nth-child(4) { white-space: nowrap; }
-.f-tbl.log th { line-height: 1.3; }
+.f-tbl.log th { line-height: 1.3; text-align: center; vertical-align: middle; }
 .f-tbl.log td, .f-tbl.log th { font-size: 10px; padding: 3px 5px; }
 .f-tbl.log td:nth-child(5) { white-space: normal; word-break: break-word; }
 .t-formal .st { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
