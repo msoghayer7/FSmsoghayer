@@ -37,8 +37,8 @@
     const s = stats(topics), today = todayISO();
     let n = 0;
     const out = [];
-    // the letterhead already carries the heading ("تقرير متابعة"): avoid repeating it as a big title
-    out.push(onNewPage(h(`<div class="f-ttl">${ctx.S.headTitle ? "" : `<h1>${esc(ctx.S.reportTitle)}</h1>`}<p>${esc(ctx.period)} · ${topicsN(s.total)} · النطاق: ${esc(scopeLabel())}</p></div>`), { kind: "summary" }));
+    // the letterhead already carries the heading ("تقرير متابعة"); only show a big title when it is empty
+    if (!ctx.S.headTitle) out.push(h(`<div class="f-ttl"><h1>${esc(ctx.S.reportTitle)}</h1></div>`));
 
     // narrative
     let p = `بلغ عدد المواضيع المشمولة بهذا التقرير <b>${topicsN(s.total)}</b>`;
@@ -51,6 +51,7 @@
     if (s.avgClose !== null) p += ` وبلغ متوسط مدة إقفال المواضيع المنجزة <b>${dur(s.avgClose)}</b>.`;
     if (s.stale.length) p += ` ويُلاحظ عدم تسجيل أي إجراء على ${topicsN(s.stale.length)} منذ أكثر من أسبوعين.`;
     out.push(sec(n++, "الملخص التنفيذي"));
+    onNewPage(out[0], { kind: "summary" });
     out.push(h(`<p class="f-para">${p}</p>`));
     out.push(h(`<div class="f-stats">
       <div><b>${s.total}</b><span>إجمالي المواضيع</span></div><div><b>${s.open}</b><span>مفتوح</span></div><div><b>${s.progress}</b><span>قيد الإجراء</span></div>
